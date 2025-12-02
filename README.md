@@ -14,6 +14,8 @@ Monorepo with a React + TypeScript frontend and a Node.js + TypeScript backend.
    - npm run dev:backend
 3) Optional backend env
    - copy apps/backend/.env.example to apps/backend/.env
+4) Optional frontend env
+   - copy apps/frontend/.env.example to apps/frontend/.env
 
 ## Local Postgres
 1) Start Postgres
@@ -24,6 +26,9 @@ Monorepo with a React + TypeScript frontend and a Node.js + TypeScript backend.
    - db: room_booking
    - user: room_user
    - password: room_pass
+3) Seeded admin account
+   - email: admin@local.test
+   - password: admin123
 
 ## Cloud Spanner Emulator
 1) Start the emulator

@@ -6,3 +6,21 @@ export interface User {
   fullName: string;
   role: UserRole;
 }
+
+export interface Reservation {
+  id: string;
+  roomId: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  location: string;
+  capacity: number;
+  resources: string[];
+  reservations: Reservation[];
+}

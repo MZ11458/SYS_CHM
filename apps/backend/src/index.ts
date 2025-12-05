@@ -3,6 +3,7 @@ import express from "express";
 import { config } from "./config";
 import { initSpanner } from "./db/spanner";
 import authRouter from "./routes/auth";
+import roomsRouter from "./routes/rooms";
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
+app.use("/api/rooms", roomsRouter);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

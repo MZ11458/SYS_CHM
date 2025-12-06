@@ -24,3 +24,15 @@ export interface Room {
   resources: string[];
   reservations: Reservation[];
 }
+
+export interface UserReservation {
+  id: string;
+  roomId: string;
+  roomName: string;
+  roomLocation: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  createdAt: string;
+  canceledAt: string | null;
+}

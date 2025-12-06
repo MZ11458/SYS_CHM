@@ -47,3 +47,43 @@ export async function initSpanner(): Promise<void> {
 export function getSpannerDatabase() {
   return database;
 }
+
+export async function insertGlobalReservation(input: {
+  id: string;
+  roomId: string;
+  userId: string;
+  startTime: Date;
+  endTime: Date;
+  status: string;
+  createdAt: Date;
+  canceledAt?: Date | null;
+}) {
+  const table = database.table("GlobalReservations");
+  await table.insert([
+    {
+      ReservationId: input.id,
+      RoomId: input.roomId,
+      UserId: input.userId,
+      StartTime: input.startTime,
+      EndTime: input.endTime,
+      Status: input.status,
+      CreatedAt: input.createdAt,
+      CanceledAt: input.canceledAt || null
+    }
+  ]);
+}
+
+export async function cancelGlobalReservation(input: {
+  id: string;
+  status: string;
+  canceledAt: Date;
+}) {
+  const table = database.table("GlobalReservations");
+  await table.update([
+    {
+      ReservationId: input.id,
+      Status: input.status,
+      CanceledAt: input.canceledAt
+    }
+  ]);
+}

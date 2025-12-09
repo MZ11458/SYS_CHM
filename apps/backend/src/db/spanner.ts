@@ -87,3 +87,27 @@ export async function cancelGlobalReservation(input: {
     }
   ]);
 }
+
+export async function fetchGlobalStats() {
+  const [rows] = await database.run({
+    sql: "SELECT Status, COUNT(1) AS Count FROM GlobalReservations GROUP BY Status"
+  });
+
+  let total = 0;
+  let active = 0;
+  let canceled = 0;
+
+  for (const row of rows) {
+    const json = row.toJSON() as { Status: string; Count: string | number };
+    const count = Number(json.Count);
+    total += count;
+    if (json.Status === "active") {
+      active = count;
+    }
+    if (json.Status === "canceled") {
+      canceled = count;
+    }
+  }
+
+  return { total, active, canceled };
+}

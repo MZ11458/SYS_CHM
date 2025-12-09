@@ -289,6 +289,28 @@ button:disabled {
   gap: 16px;
 }
 
+.stats-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 16px;
+  border: 1px solid rgba(27, 28, 30, 0.08);
+  padding: 16px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  margin: 8px 0;
+}
+
+.muted.small {
+  font-size: 0.75rem;
+}
+
 .reservation-item {
   background: rgba(255, 255, 255, 0.7);
   border-radius: 16px;

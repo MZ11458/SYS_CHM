@@ -36,3 +36,23 @@ export interface UserReservation {
   createdAt: string;
   canceledAt: string | null;
 }
+
+export interface AdminStats {
+  users: {
+    total: number;
+  };
+  rooms: {
+    total: number;
+  };
+  reservations: {
+    total: number;
+    active: number;
+    canceled: number;
+    today: number;
+  };
+  globalReservations: {
+    total: number;
+    active: number;
+    canceled: number;
+  } | null;
+}

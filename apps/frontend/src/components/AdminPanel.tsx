@@ -32,47 +32,48 @@ export default function AdminPanel({ token }: AdminPanelProps) {
     <section className="card" data-animate>
       <div className="panel-header">
         <div>
-          <p className="eyebrow">Admin overview</p>
-          <h2>Usage snapshot</h2>
+          <p className="eyebrow">Przegląd administracyjny</p>
+          <h2>Podsumowanie użycia</h2>
         </div>
         <button className="ghost-button" onClick={loadStats}>
-          Refresh
+          Odśwież
         </button>
       </div>
 
-      {loading ? <p className="muted">Loading...</p> : null}
+      {loading ? <p className="muted">Ładowanie...</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       {stats ? (
         <div className="stats-grid">
           <div className="stat-card">
-            <p className="muted">Users</p>
+            <p className="muted">Użytkownicy</p>
             <h3 className="stat-value">{stats.users.total}</h3>
           </div>
           <div className="stat-card">
-            <p className="muted">Rooms</p>
+            <p className="muted">Sale</p>
             <h3 className="stat-value">{stats.rooms.total}</h3>
           </div>
           <div className="stat-card">
-            <p className="muted">Reservations</p>
+            <p className="muted">Rezerwacje</p>
             <h3 className="stat-value">{stats.reservations.total}</h3>
             <p className="muted small">
-              Active: {stats.reservations.active} | Canceled: {stats.reservations.canceled}
+              Aktywne: {stats.reservations.active} | Anulowane:{" "}
+              {stats.reservations.canceled}
             </p>
-            <p className="muted small">Today: {stats.reservations.today}</p>
+            <p className="muted small">Dziś: {stats.reservations.today}</p>
           </div>
           <div className="stat-card">
-            <p className="muted">Global reservations</p>
+            <p className="muted">Rezerwacje globalne</p>
             {stats.globalReservations ? (
               <>
                 <h3 className="stat-value">{stats.globalReservations.total}</h3>
                 <p className="muted small">
-                  Active: {stats.globalReservations.active} | Canceled:{" "}
+                  Aktywne: {stats.globalReservations.active} | Anulowane:{" "}
                   {stats.globalReservations.canceled}
                 </p>
               </>
             ) : (
-              <p className="muted">Spanner emulator offline.</p>
+              <p className="muted">Emulator Spanner jest niedostępny.</p>
             )}
           </div>
         </div>

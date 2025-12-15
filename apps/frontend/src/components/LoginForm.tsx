@@ -34,17 +34,17 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
   return (
     <div className="login-card" data-animate>
       <div className="login-header">
-        <p className="eyebrow">Workspace Scheduler</p>
-        <h1>{isRegister ? "Create your account" : "Welcome back"}</h1>
+        <p className="eyebrow">Planer biura</p>
+        <h1>{isRegister ? "Utwórz konto" : "Witaj ponownie"}</h1>
         <p className="muted">
-          Reserve rooms, gear, and focus spaces with one shared calendar.
+          Rezerwuj sale, sprzęt i strefy pracy w jednym wspólnym kalendarzu.
         </p>
       </div>
 
       <form className="login-form" onSubmit={handleSubmit}>
         {isRegister ? (
           <label>
-            Full name
+            Imię i nazwisko
             <input
               type="text"
               value={fullName}
@@ -61,13 +61,13 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@company.com"
+            placeholder="ty@firma.pl"
             required
           />
         </label>
 
         <label>
-          Password
+          Hasło
           <input
             type="password"
             value={password}
@@ -80,7 +80,7 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
         {error ? <p className="error">{error}</p> : null}
 
         <button type="submit" disabled={loading}>
-          {loading ? "Working..." : isRegister ? "Create account" : "Sign in"}
+          {loading ? "Przetwarzanie..." : isRegister ? "Utwórz konto" : "Zaloguj się"}
         </button>
       </form>
 
@@ -91,10 +91,10 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
           onClick={() => setIsRegister(!isRegister)}
         >
           {isRegister
-            ? "Already have an account? Sign in"
-            : "New here? Create an account"}
+            ? "Masz już konto? Zaloguj się"
+            : "Nowy tutaj? Utwórz konto"}
         </button>
-        <p className="note">Admin demo: admin@local.test / admin123</p>
+        <p className="note">Demo admina: admin@local.test / admin123</p>
       </div>
     </div>
   );

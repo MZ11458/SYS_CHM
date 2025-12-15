@@ -56,24 +56,24 @@ export default function App() {
       <div className="auth-screen">
         <LoginForm onAuth={handleAuth} />
         <div className="auth-aside" data-animate>
-          <p className="eyebrow">Availability first</p>
-          <h2>Plan the workday before it gets busy.</h2>
+          <p className="eyebrow">Najpierw dostępność</p>
+          <h2>Zaplanuj dzień pracy, zanim zrobi się tłoczno.</h2>
           <p className="muted">
-            See whats free, claim your slot, and keep every team in sync
-            without the email back and forth.
+            Sprawdź, co jest wolne, zarezerwuj slot i utrzymaj zespoły w
+            synchronizacji bez maili w tę i z powrotem.
           </p>
           <div className="stat-grid">
             <div>
               <span className="stat">12</span>
-              <span className="stat-label">Rooms</span>
+              <span className="stat-label">Sale</span>
             </div>
             <div>
               <span className="stat">8</span>
-              <span className="stat-label">Resource kits</span>
+              <span className="stat-label">Zestawy sprzętu</span>
             </div>
             <div>
               <span className="stat">3</span>
-              <span className="stat-label">Sites</span>
+              <span className="stat-label">Lokalizacje</span>
             </div>
           </div>
         </div>
@@ -81,17 +81,19 @@ export default function App() {
     );
   }
 
+  const roleLabel = user.role === "admin" ? "Administrator" : "Użytkownik";
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Room Booking</p>
-          <h1>Welcome, {user.fullName}</h1>
+          <p className="eyebrow">Rezerwacje sal</p>
+          <h1>Witaj, {user.fullName}</h1>
         </div>
         <div className="header-actions">
-          <span className="pill">{user.role}</span>
+          <span className="pill">{roleLabel}</span>
           <button onClick={handleLogout} className="ghost-button">
-            Sign out
+            Wyloguj się
           </button>
         </div>
       </header>
@@ -100,20 +102,20 @@ export default function App() {
           className={`nav-button ${view === "rooms" ? "active" : ""}`}
           onClick={() => setView("rooms")}
         >
-          Rooms
+          Sale
         </button>
         <button
           className={`nav-button ${view === "reservations" ? "active" : ""}`}
           onClick={() => setView("reservations")}
         >
-          My reservations
+          Moje rezerwacje
         </button>
         {user.role === "admin" ? (
           <button
             className={`nav-button ${view === "admin" ? "active" : ""}`}
             onClick={() => setView("admin")}
           >
-            Admin
+            Panel admina
           </button>
         ) : null}
       </nav>

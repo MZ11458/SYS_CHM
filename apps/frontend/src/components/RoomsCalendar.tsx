@@ -19,7 +19,7 @@ function formatHourLabel(hour: number) {
 }
 
 function formatTimeLabel(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString("en-GB", {
+  return new Date(timestamp).toLocaleTimeString("pl-PL", {
     hour: "2-digit",
     minute: "2-digit"
   });
@@ -126,42 +126,42 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
     <section className="calendar" data-animate>
       <div className="calendar-header">
         <div>
-          <p className="eyebrow">Availability</p>
-          <h2>Rooms and resources</h2>
+          <p className="eyebrow">Dostępność</p>
+          <h2>Sale i zasoby</h2>
         </div>
         <div className="calendar-controls">
           <label>
-            Date
+            Data
             <input
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
             />
           </label>
-          {loading ? <span className="muted">Loading...</span> : null}
+          {loading ? <span className="muted">Ładowanie...</span> : null}
         </div>
       </div>
 
       <div className="reservation-panel">
         <div>
-          <p className="eyebrow">Reservation builder</p>
+          <p className="eyebrow">Kreator rezerwacji</p>
           {draft ? (
             <>
               <h3>{draft.room.name}</h3>
               <p className="muted">
-                {draft.room.location} � {formatTimeLabel(draft.start)}-
+                {draft.room.location} · {formatTimeLabel(draft.start)}-
                 {formatTimeLabel(draft.end)}
               </p>
             </>
           ) : (
             <p className="muted">
-              Select a free slot to prepare a reservation.
+              Wybierz wolny slot, aby przygotować rezerwację.
             </p>
           )}
         </div>
         <div className="reservation-actions">
           <button onClick={handleReserve} disabled={!draft || actionLoading}>
-            {actionLoading ? "Booking..." : "Confirm booking"}
+            {actionLoading ? "Rezerwuję..." : "Potwierdź rezerwację"}
           </button>
           <button
             type="button"
@@ -169,7 +169,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
             onClick={() => setDraft(null)}
             disabled={!draft || actionLoading}
           >
-            Clear
+            Wyczyść
           </button>
         </div>
         {actionError ? <p className="error">{actionError}</p> : null}
@@ -179,7 +179,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
 
       <div className="calendar-grid">
         <div className="calendar-row header">
-          <div className="room-cell">Room</div>
+          <div className="room-cell">Sala</div>
           {slots.map((slot) => (
             <div key={slot.label} className="slot-cell">
               {slot.label}
@@ -195,7 +195,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
                 <span className="muted">{room.location}</span>
               </div>
               <div className="room-meta">
-                <span>{room.capacity} seats</span>
+                <span>{room.capacity} miejsc</span>
                 <div className="chip-row">
                   {room.resources.map((resource) => (
                     <span key={resource} className="chip">
@@ -223,7 +223,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
                     }
                   }}
                 >
-                  <span>{reserved ? "Booked" : "Free"}</span>
+                  <span>{reserved ? "Zajęte" : "Wolne"}</span>
                 </div>
               );
             })}

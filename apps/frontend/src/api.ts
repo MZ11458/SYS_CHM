@@ -1,4 +1,4 @@
-import type { AdminStats, Room, User } from "./types";
+import type { AdminStats, AdminUser, Room, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -129,4 +129,51 @@ export async function fetchAdminStats(token: string) {
   });
 
   return handleResponse<AdminStats>(response);
+}
+
+export async function fetchAdminUsers(token: string) {
+  const response = await fetch(`${API_URL}/api/admin/users`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  return handleResponse<{ users: AdminUser[] }>(response);
+}
+
+export async function updateAdminUser(
+  token: string,
+  userId: string,
+  payload: { role?: "user" | "admin"; isActive?: boolean }
+) {
+  const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return handleResponse<{ user: AdminUser }>(response);
+}
+
+export async function resetAdminUserPassword(
+  token: string,
+  userId: string,
+  newPassword?: string
+) {
+  const response = await fetch(
+    `${API_URL}/api/admin/users/${userId}/reset-password`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ newPassword })
+    }
+  );
+
+  return handleResponse<{ password: string; generated: boolean }>(response);
 }

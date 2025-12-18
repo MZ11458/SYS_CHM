@@ -1,3 +1,5 @@
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { fetchGlobalStats } from "../db/spanner";
 import { pgQuery } from "../db/postgres";
@@ -49,5 +51,138 @@ router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
     return res.status(500).json({ error: "admin_stats_failed" });
   }
 });
+
+router.get("/users", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const { rows } = await pgQuery<{
+      id: string;
+      email: string;
+      full_name: string;
+      role: "user" | "admin";
+      is_active: boolean;
+      created_at: string | Date;
+    }>(
+      "SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC"
+    );
+
+    const users = rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      fullName: row.full_name,
+      role: row.role,
+      isActive: row.is_active,
+      createdAt: new Date(row.created_at).toISOString()
+    }));
+
+    return res.json({ users });
+  } catch (error) {
+    return res.status(500).json({ error: "admin_users_failed" });
+  }
+});
+
+router.patch("/users/:id", requireAuth, requireAdmin, async (req, res) => {
+  const { role, isActive } = req.body as {
+    role?: "user" | "admin";
+    isActive?: boolean;
+  };
+
+  if (role === undefined && isActive === undefined) {
+    return res.status(400).json({ error: "missing_fields" });
+  }
+
+  if (role !== undefined && role !== "user" && role !== "admin") {
+    return res.status(400).json({ error: "invalid_role" });
+  }
+
+  if (isActive !== undefined && typeof isActive !== "boolean") {
+    return res.status(400).json({ error: "invalid_status" });
+  }
+
+  const updates: string[] = [];
+  const values: Array<string | boolean> = [];
+
+  if (role !== undefined) {
+    values.push(role);
+    updates.push(`role = $${values.length}`);
+  }
+
+  if (isActive !== undefined) {
+    values.push(isActive);
+    updates.push(`is_active = $${values.length}`);
+  }
+
+  values.push(req.params.id);
+
+  try {
+    const { rows } = await pgQuery<{
+      id: string;
+      email: string;
+      full_name: string;
+      role: "user" | "admin";
+      is_active: boolean;
+      created_at: string | Date;
+    }>(
+      `UPDATE users SET ${updates.join(
+        ", "
+      )} WHERE id = $${values.length} RETURNING id, email, full_name, role, is_active, created_at`,
+      values
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "user_not_found" });
+    }
+
+    const row = rows[0];
+    return res.json({
+      user: {
+        id: row.id,
+        email: row.email,
+        fullName: row.full_name,
+        role: row.role,
+        isActive: row.is_active,
+        createdAt: new Date(row.created_at).toISOString()
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "admin_user_update_failed" });
+  }
+});
+
+router.post(
+  "/users/:id/reset-password",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    const { newPassword } = req.body as { newPassword?: string };
+    const trimmed = newPassword?.trim();
+    const generated = !trimmed;
+    const password =
+      trimmed ||
+      `${randomBytes(8)
+        .toString("base64")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 10)}1!`;
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: "weak_password" });
+    }
+
+    try {
+      const passwordHash = await bcrypt.hash(password, 10);
+      const { rows } = await pgQuery<{ id: string }>(
+        "UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id",
+        [passwordHash, req.params.id]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "user_not_found" });
+      }
+
+      return res.json({ password, generated });
+    } catch (error) {
+      return res.status(500).json({ error: "admin_password_reset_failed" });
+    }
+  }
+);
 
 export default router;

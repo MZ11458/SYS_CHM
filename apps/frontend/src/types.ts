@@ -5,6 +5,16 @@ export interface User {
   email: string;
   fullName: string;
   role: UserRole;
+  isActive: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface Reservation {

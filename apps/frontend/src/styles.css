@@ -289,6 +289,50 @@ button:disabled {
   gap: 16px;
 }
 
+.account-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 24px;
+}
+
+.account-card {
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 16px;
+  border: 1px solid rgba(27, 28, 30, 0.08);
+  padding: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.account-form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.account-form form {
+  display: grid;
+  gap: 16px;
+}
+
+.account-fields {
+  display: grid;
+  gap: 16px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.success {
+  color: #1f6b63;
+  font-size: 0.85rem;
+}
+
 .admin-users {
   margin-top: 32px;
   display: grid;

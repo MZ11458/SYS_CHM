@@ -6,6 +6,19 @@ interface ReservationsPanelProps {
   token: string;
 }
 
+const errorMessages: Record<string, string> = {
+  reservations_fetch_failed: "Nie udało się pobrać Twoich rezerwacji.",
+  cancel_failed: "Nie udało się anulować rezerwacji.",
+  not_found: "Nie znaleziono rezerwacji.",
+  already_canceled: "Rezerwacja została już anulowana.",
+  forbidden: "Brak uprawnień do anulowania tej rezerwacji.",
+  spanner_sync_failed: "Nie udało się zsynchronizować anulowania globalnego.",
+  request_failed: "Wystąpił błąd komunikacji."
+};
+
+const resolveError = (err: any, fallback: string) =>
+  errorMessages[err?.message] || fallback;
+
 export default function ReservationsPanel({ token }: ReservationsPanelProps) {
   const [reservations, setReservations] = useState<UserReservation[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,7 +32,7 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
       const result = await fetchReservations(token);
       setReservations(result.reservations);
     } catch (err: any) {
-      setError(err?.message || "reservations_load_failed");
+      setError(resolveError(err, "Nie udało się pobrać Twoich rezerwacji."));
     } finally {
       setLoading(false);
     }
@@ -36,18 +49,19 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
       await cancelReservation(token, reservationId);
       await loadReservations();
     } catch (err: any) {
-      setError(err?.message || "cancel_failed");
+      setError(resolveError(err, "Nie udało się anulować rezerwacji."));
     } finally {
       setActionId(null);
     }
   };
 
   return (
-    <section className="card" data-animate>
-      <div className="panel-header">
+    <section className="panel" data-animate>
+      <div className="section-head">
         <div>
-          <p className="eyebrow">Mój plan</p>
-          <h2>Rezerwacje</h2>
+          <p className="eyebrow">Plan dnia</p>
+          <h2>Moje rezerwacje</h2>
+          <p className="muted">Szybki podgląd aktywnych i anulowanych slotów.</p>
         </div>
         <button className="ghost-button" onClick={loadReservations}>
           Odśwież
@@ -63,7 +77,7 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
         ) : (
           reservations.map((reservation) => {
             const statusLabel =
-              reservation.status === "active" ? "aktywna" : "anulowana";
+              reservation.status === "active" ? "Aktywna" : "Anulowana";
 
             return (
               <div

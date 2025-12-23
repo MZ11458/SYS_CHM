@@ -13,6 +13,7 @@ const errorMessages: Record<string, string> = {
   invalid_password: "Obecne hasło jest nieprawidłowe.",
   inactive_user: "Twoje konto jest zablokowane.",
   user_not_found: "Nie znaleziono użytkownika.",
+  missing_user: "Nie znaleziono użytkownika.",
   auth_lookup_failed: "Nie udało się zweryfikować użytkownika.",
   change_password_failed: "Nie udało się zmienić hasła.",
   request_failed: "Nie udało się zmienić hasła."
@@ -58,7 +59,8 @@ export default function AccountPanel({ token, user }: AccountPanelProps) {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      const message = errorMessages[err?.message] || "Nie udało się zmienić hasła.";
+      const message =
+        errorMessages[err?.message] || "Nie udało się zmienić hasła.";
       setError(message);
     } finally {
       setLoading(false);
@@ -74,8 +76,8 @@ export default function AccountPanel({ token, user }: AccountPanelProps) {
   };
 
   return (
-    <section className="card" data-animate>
-      <div className="panel-header">
+    <section className="panel" data-animate>
+      <div className="section-head">
         <div>
           <p className="eyebrow">Moje konto</p>
           <h2>Dane i bezpieczeństwo</h2>

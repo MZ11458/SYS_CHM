@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { login, register } from "../api";
+import type { NotifyPayload } from "../notifications";
 import type { User } from "../types";
 
 interface LoginFormProps {
   onAuth: (token: string, user: User) => void;
+  onNotify?: (payload: NotifyPayload) => void;
 }
 
 const errorMessages: Record<string, string> = {
@@ -18,7 +20,9 @@ const errorMessages: Record<string, string> = {
   request_failed: "Nie udało się połączyć z serwerem."
 };
 
-export default function LoginForm({ onAuth }: LoginFormProps) {
+const apiErrorCodes = new Set(["request_failed", "login_failed", "register_failed"]);
+
+export default function LoginForm({ onAuth, onNotify }: LoginFormProps) {
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,11 +40,28 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
         ? await register(email, password, fullName)
         : await login(email, password);
       onAuth(result.token, result.user);
+      onNotify?.({
+        title: isRegister ? "Konto utworzone" : "Zalogowano",
+        message: isRegister
+          ? "Twoje konto jest aktywne. Możesz przejść do rezerwacji."
+          : `Witaj ${result.user.fullName}.`,
+        tone: "success",
+        status: { api: "ok" }
+      });
     } catch (err: any) {
       const fallback = isRegister
         ? "Nie udało się utworzyć konta."
         : "Nie udało się zalogować.";
-      setError(errorMessages[err?.message] || fallback);
+      const message = errorMessages[err?.message] || fallback;
+      const title = isRegister ? "Rejestracja nieudana" : "Logowanie nieudane";
+
+      setError(message);
+      onNotify?.({
+        title,
+        message,
+        tone: "error",
+        status: apiErrorCodes.has(err?.message) ? { api: "warning" } : undefined
+      });
     } finally {
       setLoading(false);
     }

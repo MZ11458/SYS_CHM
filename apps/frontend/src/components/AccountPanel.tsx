@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { changePassword } from "../api";
+import type { NotifyPayload, StatusUpdate } from "../notifications";
 import type { User } from "../types";
 
 interface AccountPanelProps {
   token: string;
   user: User;
+  onNotify?: (payload: NotifyPayload) => void;
+  onStatusUpdate?: (update: StatusUpdate) => void;
 }
 
 const errorMessages: Record<string, string> = {
@@ -19,7 +22,12 @@ const errorMessages: Record<string, string> = {
   request_failed: "Nie udało się zmienić hasła."
 };
 
-export default function AccountPanel({ token, user }: AccountPanelProps) {
+export default function AccountPanel({
+  token,
+  user,
+  onNotify,
+  onStatusUpdate
+}: AccountPanelProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -58,10 +66,24 @@ export default function AccountPanel({ token, user }: AccountPanelProps) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      onStatusUpdate?.({ api: "ok" });
+      onNotify?.({
+        title: "Hasło zmienione",
+        message: "Twoje hasło zostało zaktualizowane.",
+        tone: "success",
+        status: { api: "ok" }
+      });
     } catch (err: any) {
       const message =
         errorMessages[err?.message] || "Nie udało się zmienić hasła.";
       setError(message);
+      onStatusUpdate?.({ api: "warning" });
+      onNotify?.({
+        title: "Zmiana hasła nieudana",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setLoading(false);
     }

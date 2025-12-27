@@ -15,6 +15,7 @@
   --accent-soft: rgba(230, 161, 51, 0.18);
   --success: #2f9e44;
   --danger: #d14b3c;
+  --info: #3b82f6;
   --shadow: 0 20px 50px rgba(15, 20, 27, 0.12);
   --radius: 18px;
   --radius-sm: 12px;
@@ -121,6 +122,11 @@ button:disabled {
 .ghost-button:hover {
   background: rgba(15, 20, 27, 0.06);
   transform: none;
+}
+
+.ghost-button.tiny {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
 }
 
 .link-button {
@@ -532,6 +538,31 @@ label select {
   font-size: 0.85rem;
 }
 
+.notification-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(230, 161, 51, 0.12);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.notification-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #111;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -541,9 +572,17 @@ label select {
 }
 
 .dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.dashboard-main {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 
 .panel {
@@ -824,23 +863,155 @@ label select {
   flex-wrap: wrap;
 }
 
+.notifications-panel {
+  position: sticky;
+  top: 2rem;
+}
+
+.notifications-panel .section-head {
+  margin-bottom: 1.2rem;
+}
+
+.notifications-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.notifications-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.status-pill {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.status-pill.ok {
+  background: rgba(47, 158, 68, 0.15);
+  color: #1f7a33;
+}
+
+.status-pill.warning {
+  background: rgba(230, 161, 51, 0.2);
+  color: #8a4f05;
+}
+
+.status-pill.down {
+  background: rgba(209, 75, 60, 0.2);
+  color: #9d3126;
+}
+
+.reminder-list,
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.reminder-item,
+.alert-item {
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reminder-title {
+  font-weight: 600;
+}
+
+.reminder-meta {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.alert-item.info {
+  border-left: 3px solid var(--info);
+}
+
+.alert-item.success {
+  border-left: 3px solid var(--success);
+}
+
+.alert-item.warning {
+  border-left: 3px solid var(--accent);
+}
+
+.alert-item.error {
+  border-left: 3px solid var(--danger);
+}
+
+.alert-title {
+  font-weight: 600;
+}
+
+.alert-time {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
 [data-animate] {
   animation: panelIn 0.6s ease both;
 }
 
-.dashboard > * {
+.dashboard-main > * {
   animation: panelIn 0.6s ease both;
 }
 
-.dashboard > *:nth-child(2) {
+.dashboard-main > *:nth-child(2) {
   animation-delay: 0.05s;
 }
 
-.dashboard > *:nth-child(3) {
+.dashboard-main > *:nth-child(3) {
   animation-delay: 0.1s;
 }
 
-.dashboard > *:nth-child(4) {
+.dashboard-main > *:nth-child(4) {
   animation-delay: 0.15s;
 }
 
@@ -862,6 +1033,14 @@ label select {
 
   .reservation-panel {
     order: -1;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .notifications-panel {
+    position: static;
   }
 }
 

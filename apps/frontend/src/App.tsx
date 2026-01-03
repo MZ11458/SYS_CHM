@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { fetchReservations } from "./api";
+import { fetchHealth, fetchReservations } from "./api";
 import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
 import ReservationsPanel from "./components/ReservationsPanel";
 import AdminPanel from "./components/AdminPanel";
 import AccountPanel from "./components/AccountPanel";
 import NotificationsPanel from "./components/NotificationsPanel";
+import ToastStack from "./components/ToastStack";
 import type {
   Alert,
   NotifyPayload,
   Reminder,
+  StatusLevel,
   StatusUpdate,
   SystemStatus
 } from "./notifications";
@@ -17,6 +19,9 @@ import type { User, UserReservation } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
 const MAX_ALERTS = 6;
+const MAX_TOASTS = 3;
+const TOAST_DURATION_MS = 6500;
+const HEALTH_POLL_MS = 15000;
 
 type StoredAuth = {
   token: string;
@@ -24,6 +29,18 @@ type StoredAuth = {
 };
 
 type View = "rooms" | "reservations" | "account" | "admin";
+
+const systemStatusLabels: Record<StatusLevel, string> = {
+  ok: "Stabilny",
+  warning: "Ostrzeżenie",
+  down: "Niedostępny"
+};
+
+const spannerStatusLabels: Record<StatusLevel, string> = {
+  ok: "Aktywna",
+  warning: "Ostrzeżenie",
+  down: "Niedostępna"
+};
 
 const createAlertId = () =>
   `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -55,6 +72,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<View>("rooms");
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [toasts, setToasts] = useState<Alert[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(true);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>(() => ({
     api: navigator.onLine ? "ok" : "down",
@@ -108,6 +127,58 @@ export default function App() {
     }));
   };
 
+  useEffect(() => {
+    let active = true;
+
+    const pollHealth = async () => {
+      try {
+        const result = await fetchHealth();
+        if (!active) {
+          return;
+        }
+        updateStatus({
+          api: result.api === "ok" ? "ok" : "down",
+          spanner: result.spanner === "ok" ? "ok" : "down"
+        });
+      } catch {
+        if (!active) {
+          return;
+        }
+        updateStatus({
+          api: "down",
+          spanner: "down"
+        });
+      }
+    };
+
+    pollHealth();
+    const timer = window.setInterval(pollHealth, HEALTH_POLL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const handleOpenNotifications = () => {
+    setNotificationsOpen(true);
+    const target = document.getElementById("notifications-center");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleToggleNotifications = () => {
+    setNotificationsOpen((prev) => !prev);
+  };
+
+  const addToast = (alert: Alert) => {
+    setToasts((prev) => [alert, ...prev].slice(0, MAX_TOASTS));
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== alert.id));
+    }, TOAST_DURATION_MS);
+  };
+
   const notify = (payload: NotifyPayload) => {
     const alert: Alert = {
       id: createAlertId(),
@@ -118,6 +189,7 @@ export default function App() {
     };
 
     setAlerts((prev) => [alert, ...prev].slice(0, MAX_ALERTS));
+    addToast(alert);
 
     if (payload.status) {
       updateStatus(payload.status);
@@ -144,10 +216,16 @@ export default function App() {
 
   const handleDismissAlert = (alertId: string) => {
     setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+    setToasts((prev) => prev.filter((toast) => toast.id !== alertId));
+  };
+
+  const handleDismissToast = (toastId: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
   };
 
   const handleClearAlerts = () => {
     setAlerts([]);
+    setToasts([]);
   };
 
   const handleAuth = (nextToken: string, nextUser: User) => {
@@ -165,11 +243,16 @@ export default function App() {
     setUser(null);
     setView("rooms");
     setAlerts([]);
+    setToasts([]);
     setReminders([]);
+    setNotificationsOpen(true);
     localStorage.removeItem(STORAGE_KEY);
   };
 
   if (!token || !user) {
+    const systemLabel = systemStatusLabels[systemStatus.api];
+    const spannerLabel = spannerStatusLabels[systemStatus.spanner];
+
     return (
       <div className="auth-shell">
         <aside className="auth-visual" data-animate>
@@ -201,15 +284,26 @@ export default function App() {
           <div className="auth-status">
             <div className="status-card">
               <span className="status-label">System</span>
-              <span className="status-value ok">Stabilny</span>
+              <span className={`status-value ${systemStatus.api}`}>
+                {systemLabel}
+              </span>
             </div>
             <div className="status-card">
               <span className="status-label">Synchronizacja globalna</span>
-              <span className="status-value">Aktywna</span>
+              <span className={`status-value ${systemStatus.spanner}`}>
+                {spannerLabel}
+              </span>
             </div>
           </div>
         </aside>
         <LoginForm onAuth={handleAuth} onNotify={notify} />
+        <ToastStack
+          toasts={toasts}
+          openLabel="Otwórz centrum"
+          dismissLabel="Schowaj"
+          onDismissToast={handleDismissToast}
+          onOpenNotifications={handleOpenNotifications}
+        />
       </div>
     );
   }
@@ -283,10 +377,10 @@ export default function App() {
               <span className="status-dot" />
               <span>{roleLabel}</span>
             </div>
-            <div className="notification-chip">
+            <button className="notification-chip" onClick={handleOpenNotifications}>
               <span>Alerty</span>
               <span className="notification-count">{alerts.length}</span>
-            </div>
+            </button>
             <button onClick={handleLogout} className="ghost-button">
               Wyloguj się
             </button>
@@ -330,12 +424,21 @@ export default function App() {
             alerts={alerts}
             reminders={reminders}
             systemStatus={systemStatus}
+            isOpen={notificationsOpen}
+            onToggle={handleToggleNotifications}
             onDismissAlert={handleDismissAlert}
             onClearAlerts={handleClearAlerts}
             onRefresh={refreshReminders}
           />
         </main>
       </div>
+      <ToastStack
+        toasts={toasts}
+        openLabel="Otwórz centrum"
+        dismissLabel="Schowaj"
+        onDismissToast={handleDismissToast}
+        onOpenNotifications={handleOpenNotifications}
+      />
     </div>
   );
 }

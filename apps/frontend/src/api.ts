@@ -194,3 +194,11 @@ export async function changePassword(
 
   return handleResponse<{ status: "ok" }>(response);
 }
+
+export async function fetchHealth() {
+  const response = await fetch(`${API_URL}/api/health`, {
+    cache: "no-store"
+  });
+
+  return handleResponse<{ api: "ok"; spanner: "ok" | "down" }>(response);
+}

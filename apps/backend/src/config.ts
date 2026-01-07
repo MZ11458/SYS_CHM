@@ -2,8 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const spannerEmulatorHost =
-  process.env.SPANNER_EMULATOR_HOST || "localhost:9010";
+const spannerEmulatorHost = process.env.SPANNER_EMULATOR_HOST;
 
 if (spannerEmulatorHost) {
   process.env.SPANNER_EMULATOR_HOST = spannerEmulatorHost;

@@ -25,7 +25,10 @@ app.get("/health", (_req, res) => {
 
 initSpanner()
   .then(() => {
-    console.log("Spanner emulator initialized");
+    const label = config.spanner.emulatorHost
+      ? "Spanner emulator initialized"
+      : "Spanner client ready";
+    console.log(label);
   })
   .catch((error) => {
     console.error("Spanner init failed", error);

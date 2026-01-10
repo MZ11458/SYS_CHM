@@ -2,10 +2,10 @@
 
 ## Dane dokumentu
 - Tytul: Dokumentacja tworzenia srodowiska chmurowego w Google Cloud dla systemu rezerwacji sal
-- Wersja: 1.0
-- Data: 2026-01-20
+- Wersja: 1.1
+- Data: 2026-01-21
 - Projekt: System rezerwacji sal i zasobow (GKE + Cloud SQL + Cloud Spanner)
-- Zakres: utworzenie zasobow chmurowych i ich podstawowa konfiguracja
+- Zakres: utworzenie zasobow chmurowych, budowa obrazow i wdrozenie na GKE
 
 ## Spis tresci
 1. Cel i zakres dokumentu
@@ -23,9 +23,11 @@
 13. Google Kubernetes Engine (GKE)
 14. Workload Identity i mapowanie kont
 15. Konfiguracja bezpieczenstwa i sekretow
-16. Obserwowalnosc (Monitoring i Logging)
-17. Walidacja i checklisty
-18. Aneks: zestaw polecen z parametrami
+16. Budowanie i publikacja obrazow (Cloud Build)
+17. Wdrozenie aplikacji na GKE (Backend i Frontend)
+18. Obserwowalnosc (Monitoring i Logging)
+19. Walidacja i checklisty
+20. Aneks: zestaw polecen z parametrami
 
 ---
 
@@ -35,7 +37,7 @@ Celem dokumentu jest przedstawienie szczegolowej, akademickiej instrukcji krok p
 - relacyjna baza danych na Cloud SQL (PostgreSQL),
 - globalna baza rezerwacji na Cloud Spanner.
 
-Zakres obejmuje tworzenie zasobow, konfiguracje IAM, sieci i rejestrow obrazow, bez wdrazania kodu aplikacji. W miejscu, gdzie wdrozenie aplikacji jest niezbedne do weryfikacji polaczen, przedstawiono metody testowe.
+Zakres obejmuje tworzenie zasobow, konfiguracje IAM, sieci i rejestrow obrazow, a takze budowanie obrazow i wdrozenie aplikacji na GKE. W miejscu, gdzie wdrozenie aplikacji jest niezbedne do weryfikacji polaczen, przedstawiono metody testowe.
 
 ## 2. Wymagania projektu i kontekst
 Wymagania funkcjonalne wynikaja z zalozen projektu: system webowy rezerwacji sal w firmie oraz integracja danych lokalnych i globalnych. Wymagania techniczne infrastruktury:
@@ -105,6 +107,12 @@ Parametry globalne ustawiane w CLI (przyklad):
 ```
 $env:PROJECT_ID="room-booking-prod"
 $env:REGION="europe-central2"
+```
+
+W Cloud Shell (bash) stosuj skladnie:
+```
+export PROJECT_ID="room-booking-prod"
+export REGION="europe-central2"
 ```
 
 ## 6. Utworzenie projektu Google Cloud i powiazanie z billingiem
@@ -392,20 +400,231 @@ gcloud secrets versions add jwt-secret --data-file=-
 ```
 Wdrozenie w GKE wymaga odpowiednich uprawnien IAM i mechanizmu podania sekretu do poda (np. CSI Driver).
 
-## 16. Obserwowalnosc (Monitoring i Logging)
-### 16.1 Konfiguracja Cloud Monitoring
+## 16. Budowanie i publikacja obrazow (Cloud Build)
+### 16.1 Wlaczenie API i uprawnienia
+W Cloud Shell zaleca sie wykorzystanie Cloud Build do budowy obrazow. Wymagane API:
+```
+gcloud services enable cloudbuild.googleapis.com
+```
+Uzytkownik uruchamiajacy build powinien miec role:
+```
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="user:USER_EMAIL" --role="roles/cloudbuild.builds.editor"
+```
+
+### 16.2 Uprawnienia do Artifact Registry dla Cloud Build
+Cloud Build musi miec prawo do push obrazu. Nadaj role writer odpowiedniemu service account:
+```
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+```
+Opcjonalnie (logi Cloud Build):
+```
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/logging.logWriter"
+```
+
+### 16.3 Budowa i publikacja backendu
+Przygotuj zmienne:
+```
+export REPO="$REGION-docker.pkg.dev/$PROJECT_ID/room-booking"
+export BACKEND_IMAGE="$REPO/backend:1"
+```
+Konfiguracja Cloud Build:
+```
+cat > cloudbuild-backend.yaml <<EOF
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build','-t','${BACKEND_IMAGE}','-f','apps/backend/Dockerfile','.']
+images:
+- '${BACKEND_IMAGE}'
+EOF
+```
+Uruchom build:
+```
+gcloud builds submit --config cloudbuild-backend.yaml .
+```
+
+### 16.4 Budowa i publikacja frontendu
+Po wdrozeniu backendu pobierz IP load balancera:
+```
+BACKEND_LB=$(kubectl get svc backend-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+```
+Zbuduj frontend z poprawnym URL API:
+```
+export FRONTEND_IMAGE="$REPO/frontend:1"
+
+cat > cloudbuild-frontend.yaml <<EOF
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build','-t','${FRONTEND_IMAGE}','-f','apps/frontend/Dockerfile','--build-arg','VITE_API_URL=http://${BACKEND_LB}','.']
+images:
+- '${FRONTEND_IMAGE}'
+EOF
+
+gcloud builds submit --config cloudbuild-frontend.yaml .
+```
+
+## 17. Wdrozenie aplikacji na GKE (Backend i Frontend)
+### 17.1 Sekrety i konfiguracja backendu
+Sekrety aplikacji (JWT, haslo DB) przechowuj w Kubernetes Secrets:
+```
+kubectl delete secret backend-secrets --ignore-not-found
+kubectl create secret generic backend-secrets \
+  --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=POSTGRES_PASSWORD="STRONG_PASS"
+```
+
+ConfigMap z parametrami backendu (bez SPANNER_EMULATOR_HOST w produkcji):
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  PORT: "4000"
+  NODE_ENV: "production"
+  POSTGRES_HOST: "127.0.0.1"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "room_booking"
+  POSTGRES_USER: "room_user"
+  SPANNER_PROJECT_ID: "$PROJECT_ID"
+  SPANNER_INSTANCE_ID: "room-booking-global"
+  SPANNER_DATABASE_ID: "room_booking_global"
+```
+
+### 17.2 Backend Deployment i Cloud SQL Proxy
+Zalecany wzorzec to sidecar Cloud SQL Proxy:
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: room-booking-backend
+  template:
+    metadata:
+      labels:
+        app: room-booking-backend
+    spec:
+      serviceAccountName: backend-sa
+      containers:
+        - name: api
+          image: $BACKEND_IMAGE
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.4
+          args:
+            - "--address=127.0.0.1"
+            - "--port=5432"
+            - "$CONNECTION_NAME"
+          securityContext:
+            runAsNonRoot: true
+```
+Service typu LoadBalancer:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: room-booking-backend
+  ports:
+    - port: 80
+      targetPort: 4000
+```
+
+### 17.3 Health check backendu
+Po uzyskaniu External IP:
+```
+BACKEND_LB=$(kubectl get svc backend-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+curl "http://$BACKEND_LB/api/health"
+```
+Oczekiwane: {"api":"ok","spanner":"ok"}.
+
+### 17.4 Frontend Deployment i Service
+Deployment:
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: room-booking-frontend
+  template:
+    metadata:
+      labels:
+        app: room-booking-frontend
+    spec:
+      containers:
+        - name: web
+          image: $FRONTEND_IMAGE
+          ports:
+            - containerPort: 80
+```
+Service:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: room-booking-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+```
+Uzyskanie adresu:
+```
+FRONTEND_LB=$(kubectl get svc frontend-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "http://$FRONTEND_LB"
+```
+
+### 17.5 Uwaga o pobieraniu obrazow (ImagePullBackOff)
+Jesli pojawi sie ImagePullBackOff, nadaj roli reader dla node service account:
+```
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_ID}-compute@developer.gserviceaccount.com" \
+  --role="roles/artifactregistry.reader"
+```
+
+## 18. Obserwowalnosc (Monitoring i Logging)
+### 18.1 Konfiguracja Cloud Monitoring
 GKE domyslnie integruje sie z Cloud Operations.
 Zalecane:
 - Upewnic sie, ze monitoring i logging sa wlaczone dla klastra.
 - Zdefiniowac alerty dla bledow polaczenia z Cloud SQL i Spanner.
 - Monitorowac metryki: CPU, pamiec, liczba zapytan DB, opoznienia.
 
-### 16.2 Budzety i alerty kosztowe
+### 18.2 Budzety i alerty kosztowe
 W konsoli Cloud Billing ustaw budzety i alerty procentowe (np. 50%, 90%, 100%).
 Pozwala to kontrolowac koszty GKE, Cloud SQL i Spanner.
 
-## 17. Walidacja i checklisty
-### 17.1 Weryfikacja zasobow
+## 19. Walidacja i checklisty
+### 19.1 Weryfikacja zasobow
 ```
 gcloud sql instances list
 
@@ -416,35 +635,35 @@ gcloud container clusters list
 gcloud artifacts repositories list
 ```
 
-### 17.2 Kontrola dostepu
+### 19.2 Kontrola dostepu
 - Czy GSA ma role cloudsql.client i spanner.databaseUser?
 - Czy KSA jest poprawnie zmapowane do GSA?
 
-### 17.3 Polaczenia testowe
+### 19.3 Polaczenia testowe
 Na etapie wdrozenia aplikacji mozna wykonac test:
 - backend -> Cloud SQL (zapytanie SELECT 1)
 - backend -> Spanner (zapytanie SELECT 1)
 
-### 17.4 Limity i quota
+### 19.4 Limity i quota
 Przed wdrozeniem sprawdz limity w regionie (CPU, liczba adresow IP, liczba instancji):
 ```
 gcloud compute regions describe $env:REGION
 ```
 
-## 18. Aneks: zestaw polecen z parametrami
-### 18.1 Zmienne globalne
+## 20. Aneks: zestaw polecen z parametrami
+### 20.1 Zmienne globalne
 ```
 $env:PROJECT_ID="room-booking-prod"
 $env:REGION="europe-central2"
 $env:SPANNER_CONFIG="regional-europe-central2"
 ```
 
-### 18.2 Wlaczenie API
+### 20.2 Wlaczenie API
 ```
 gcloud services enable container.googleapis.com sqladmin.googleapis.com spanner.googleapis.com artifactregistry.googleapis.com iam.googleapis.com
 ```
 
-### 18.3 Cloud SQL
+### 20.3 Cloud SQL
 ```
 gcloud sql instances create room-booking-sql --database-version=POSTGRES_15 --cpu=1 --memory=3840MiB --region=$env:REGION
 
@@ -453,14 +672,14 @@ gcloud sql databases create room_booking --instance=room-booking-sql
 gcloud sql users create room_user --instance=room-booking-sql --password=STRONG_PASS
 ```
 
-### 18.4 Spanner
+### 20.4 Spanner
 ```
 gcloud spanner instances create room-booking-global --config=$env:SPANNER_CONFIG --nodes=1 --description="Room Booking Global"
 
 gcloud spanner databases create room_booking_global --instance=room-booking-global --ddl-file=spanner.ddl
 ```
 
-### 18.5 GKE
+### 20.5 GKE
 ```
 gcloud container clusters create room-booking-gke --region=$env:REGION --num-nodes=2 --workload-pool=$env:PROJECT_ID.svc.id.goog --release-channel=regular
 
@@ -469,6 +688,18 @@ kubectl create serviceaccount backend-sa
 kubectl annotate serviceaccount backend-sa iam.gke.io/gcp-service-account=room-booking-backend@$env:PROJECT_ID.iam.gserviceaccount.com
 
 gcloud iam service-accounts add-iam-policy-binding room-booking-backend@$env:PROJECT_ID.iam.gserviceaccount.com --role=roles/iam.workloadIdentityUser --member="serviceAccount:$env:PROJECT_ID.svc.id.goog[default/backend-sa]"
+```
+
+### 20.6 Cloud Build i wdrozenie
+```
+gcloud services enable cloudbuild.googleapis.com
+
+gcloud builds submit --config cloudbuild-backend.yaml .
+
+gcloud builds submit --config cloudbuild-frontend.yaml .
+
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/frontend.yaml
 ```
 
 ---

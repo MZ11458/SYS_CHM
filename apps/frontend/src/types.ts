@@ -29,6 +29,7 @@ export interface Reservation {
 export interface Room {
   id: string;
   name: string;
+  branch: string;
   location: string;
   capacity: number;
   resources: string[];

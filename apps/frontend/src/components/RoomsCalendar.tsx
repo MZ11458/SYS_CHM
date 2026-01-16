@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties
+} from "react";
 import { createReservation, fetchRooms } from "../api";
 import {
   formatRoomLocation,
@@ -16,6 +24,23 @@ interface RoomsCalendarProps {
 }
 
 const HOURS = Array.from({ length: 10 }, (_, index) => 8 + index);
+const WORLD_MAP_URL = new URL("../assets/world-map.svg", import.meta.url).href;
+const MAP_VIEWBOX_WIDTH = 1010;
+const MAP_VIEWBOX_HEIGHT = 666;
+const MAP_SCALE = 1.2;
+const MAP_OFFSET_X = -0.1;
+const MAP_OFFSET_Y = -0.06;
+const BRANCH_POSITIONS: Record<string, { x: number; y: number }> = {
+  polska: { x: 528.55, y: 292.22 },
+  warszawa: { x: 528.55, y: 292.22 },
+  usa: { x: 205.9, y: 347.21 },
+  "nowy jork": { x: 215, y: 275 },
+  japonia: { x: 853.09, y: 356.53 },
+  tokio: { x: 853.09, y: 356.53 },
+  europa: { x: 0.52 * MAP_VIEWBOX_WIDTH, y: 0.44 * MAP_VIEWBOX_HEIGHT },
+  azja: { x: 0.76 * MAP_VIEWBOX_WIDTH, y: 0.54 * MAP_VIEWBOX_HEIGHT },
+  ameryka: { x: 0.18 * MAP_VIEWBOX_WIDTH, y: 0.44 * MAP_VIEWBOX_HEIGHT }
+};
 
 const loadErrorMessages: Record<string, string> = {
   rooms_fetch_failed: "Nie udało się pobrać dostępności sal.",
@@ -52,6 +77,16 @@ function formatTimeLabel(timestamp: number) {
   });
 }
 
+function formatCityList(cities: string[]) {
+  if (cities.length <= 1) {
+    return cities[0] || "Brak miasta";
+  }
+  if (cities.length === 2) {
+    return `${cities[0]} • ${cities[1]}`;
+  }
+  return `${cities[0]}, ${cities[1]} +${cities.length - 2}`;
+}
+
 function formatRoomCount(count: number) {
   if (count === 1) {
     return `${count} sala`;
@@ -62,6 +97,30 @@ function formatRoomCount(count: number) {
     return `${count} sale`;
   }
   return `${count} sal`;
+}
+
+function resolveAvailabilityTier(ratio: number) {
+  if (ratio >= 0.7) {
+    return { key: "high", label: "Wysoka dostępność" };
+  }
+  if (ratio >= 0.4) {
+    return { key: "medium", label: "Umiarkowana dostępność" };
+  }
+  return { key: "low", label: "Niska dostępność" };
+}
+
+function resolveBranchPosition(label: string, index: number, total: number) {
+  const key = label.toLowerCase();
+  const known = BRANCH_POSITIONS[key];
+  if (known) {
+    return known;
+  }
+  const count = Math.max(total, 1);
+  const angle = (index / count) * Math.PI * 2;
+  return {
+    x: (0.5 + 0.32 * Math.cos(angle)) * MAP_VIEWBOX_WIDTH,
+    y: (0.5 + 0.22 * Math.sin(angle)) * MAP_VIEWBOX_HEIGHT
+  };
 }
 
 function hasOverlap(
@@ -90,6 +149,16 @@ export default function RoomsCalendar({
   const [filterPickerMode, setFilterPickerMode] = useState<
     "branch" | "city" | null
   >(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapImageRef = useRef<HTMLImageElement | null>(null);
+  const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
+  const [mapLayout, setMapLayout] = useState<{
+    width: number;
+    height: number;
+    mapLeft: number;
+    mapTop: number;
+    scale: number;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<{
@@ -219,6 +288,96 @@ export default function RoomsCalendar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [filterPickerOpen]);
 
+  useLayoutEffect(() => {
+    const node = mapRef.current;
+    if (!node) {
+      return;
+    }
+
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect();
+      setMapSize((current) => {
+        if (current.width === rect.width && current.height === rect.height) {
+          return current;
+        }
+        return { width: rect.width, height: rect.height };
+      });
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateSize);
+      return () => window.removeEventListener("resize", updateSize);
+    }
+
+    const observer = new ResizeObserver(() => updateSize());
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
+
+  const updateMapLayout = useCallback(() => {
+    const container = mapRef.current;
+    const image = mapImageRef.current;
+    if (!container || !image) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const imageRect = image.getBoundingClientRect();
+    if (!containerRect.width || !containerRect.height) {
+      return;
+    }
+
+    const naturalWidth = image.naturalWidth || MAP_VIEWBOX_WIDTH;
+    const naturalHeight = image.naturalHeight || MAP_VIEWBOX_HEIGHT;
+    if (!naturalWidth || !naturalHeight || !imageRect.width || !imageRect.height) {
+      return;
+    }
+
+    const viewScale = Math.min(
+      naturalWidth / MAP_VIEWBOX_WIDTH,
+      naturalHeight / MAP_VIEWBOX_HEIGHT
+    );
+    const viewWidth = MAP_VIEWBOX_WIDTH * viewScale;
+    const viewHeight = MAP_VIEWBOX_HEIGHT * viewScale;
+    const viewLeft = (naturalWidth - viewWidth) / 2;
+    const viewTop = (naturalHeight - viewHeight) / 2;
+
+    const scale = Math.min(
+      imageRect.width / naturalWidth,
+      imageRect.height / naturalHeight
+    );
+    const renderWidth = naturalWidth * scale;
+    const renderHeight = naturalHeight * scale;
+    const mapLeft =
+      imageRect.left -
+      containerRect.left +
+      (imageRect.width - renderWidth) / 2 +
+      viewLeft * scale;
+    const mapTop =
+      imageRect.top -
+      containerRect.top +
+      (imageRect.height - renderHeight) / 2 +
+      viewTop * scale;
+
+    setMapLayout({
+      width: containerRect.width,
+      height: containerRect.height,
+      mapLeft,
+      mapTop,
+      scale: scale * viewScale
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!mapSize.width || !mapSize.height) {
+      return;
+    }
+    updateMapLayout();
+  }, [mapSize, updateMapLayout]);
+
   const slots = useMemo(() => {
     return HOURS.map((hour) => {
       const start = new Date(
@@ -259,6 +418,109 @@ export default function RoomsCalendar({
   const selectedBranchLabel =
     selectedBranch === "all" ? "Wszystkie" : selectedBranch;
   const selectedCityLabel = selectedCity === "all" ? "Wszystkie" : selectedCity;
+
+  const branchSummaries = useMemo(() => {
+    const summaryMap = new Map<
+      string,
+      {
+        rooms: Room[];
+        freeSlots: number;
+        totalSlots: number;
+        cities: Set<string>;
+      }
+    >();
+    const roomFreeSlots = new Map<string, number>();
+    const totalSlotsPerRoom = slots.length;
+
+    for (const room of rooms) {
+      let freeSlots = 0;
+      for (const slot of slots) {
+        const reserved = room.reservations.some((reservation) =>
+          hasOverlap(reservation, slot.start, slot.end)
+        );
+        if (!reserved) {
+          freeSlots += 1;
+        }
+      }
+      roomFreeSlots.set(room.id, freeSlots);
+
+      const branch = room.branch || "Pozostałe";
+      if (!summaryMap.has(branch)) {
+        summaryMap.set(branch, {
+          rooms: [],
+          freeSlots: 0,
+          totalSlots: 0,
+          cities: new Set<string>()
+        });
+      }
+      const entry = summaryMap.get(branch)!;
+      entry.rooms.push(room);
+      entry.freeSlots += freeSlots;
+      entry.totalSlots += totalSlotsPerRoom;
+      entry.cities.add(normalizeRoomLocation(room.location));
+    }
+
+    return Array.from(summaryMap.entries())
+      .map(([branch, entry]) => {
+        const ratio =
+          entry.totalSlots > 0 ? entry.freeSlots / entry.totalSlots : 0;
+        const tier = resolveAvailabilityTier(ratio);
+        const cities = Array.from(entry.cities).sort((left, right) =>
+          left.localeCompare(right, "pl")
+        );
+        const topRooms = entry.rooms
+          .map((room) => ({
+            name: room.name,
+            freeSlots: roomFreeSlots.get(room.id) || 0
+          }))
+          .sort((left, right) => right.freeSlots - left.freeSlots)
+          .slice(0, 3)
+          .map((room) => room.name);
+
+        return {
+          branch,
+          roomsCount: entry.rooms.length,
+          freeSlots: entry.freeSlots,
+          totalSlots: entry.totalSlots,
+          availabilityKey: tier.key,
+          availabilityLabel: tier.label,
+          cities,
+          topRooms
+        };
+      })
+      .sort((left, right) => left.branch.localeCompare(right.branch, "pl"));
+  }, [rooms, slots]);
+
+  const branchMarkers = useMemo(() => {
+    if (!mapLayout) {
+      return [];
+    }
+
+    const labelOffset = Math.max(80, mapLayout.height * 0.22);
+    const arrowStartOffset = 18;
+
+    return branchSummaries.map((summary, index) => {
+      const anchor = resolveBranchPosition(
+        summary.branch,
+        index,
+        branchSummaries.length
+      );
+      const targetX = mapLayout.mapLeft + anchor.x * mapLayout.scale;
+      const targetY = mapLayout.mapTop + anchor.y * mapLayout.scale;
+      const labelY = Math.max(targetY - labelOffset, 20);
+      const labelX = targetX;
+
+      return {
+        ...summary,
+        targetX,
+        targetY,
+        labelX,
+        labelY,
+        arrowStartX: labelX,
+        arrowStartY: labelY + arrowStartOffset
+      };
+    });
+  }, [branchSummaries, mapLayout]);
 
   const visibleRooms = useMemo(() => {
     return rooms.filter((room) => {
@@ -330,6 +592,143 @@ export default function RoomsCalendar({
 
   return (
     <>
+      <section className="panel branch-overview" data-animate>
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">Mapa oddziałów</p>
+            <h2>Sieć operacyjna</h2>
+            <p className="muted">
+              Zobacz poziom dostępności w każdej lokalizacji i wybierz priorytet.
+            </p>
+          </div>
+          <div className="availability-legend">
+            <span className="availability-pill high">Wysoka</span>
+            <span className="availability-pill medium">Umiarkowana</span>
+            <span className="availability-pill low">Niska</span>
+          </div>
+        </div>
+        <div className="branch-overview-body">
+          <div
+            className="branch-map"
+            ref={mapRef}
+            style={
+              {
+                "--map-scale": MAP_SCALE,
+                "--map-offset-x": MAP_OFFSET_X,
+                "--map-offset-y": MAP_OFFSET_Y
+              } as CSSProperties
+            }
+          >
+            <div className="branch-map-veil" aria-hidden="true" />
+            <img
+              ref={mapImageRef}
+              className="branch-map-svg"
+              src={WORLD_MAP_URL}
+              alt=""
+              aria-hidden="true"
+              onLoad={updateMapLayout}
+            />
+            {mapLayout ? (
+              <svg
+                className="branch-map-arrows"
+                viewBox={`0 0 ${mapLayout.width} ${mapLayout.height}`}
+                aria-hidden="true"
+              >
+                <defs>
+                  <marker
+                    id="branch-arrow"
+                    markerWidth="10"
+                    markerHeight="10"
+                    refX="10"
+                    refY="5"
+                    orient="auto"
+                    markerUnits="userSpaceOnUse"
+                  >
+                    <path d="M0,0 L10,5 L0,10 Z" fill="currentColor" />
+                  </marker>
+                </defs>
+                {branchMarkers.map((summary) => (
+                  <line
+                    key={`${summary.branch}-arrow`}
+                    className={`map-arrow ${summary.availabilityKey}`}
+                    x1={summary.arrowStartX}
+                    y1={summary.arrowStartY}
+                    x2={summary.targetX}
+                    y2={summary.targetY}
+                    markerEnd="url(#branch-arrow)"
+                  />
+                ))}
+              </svg>
+            ) : null}
+            {branchMarkers.map((summary) => {
+              const style = {
+                "--x": `${summary.labelX}px`,
+                "--y": `${summary.labelY}px`
+              } as CSSProperties;
+
+              return (
+                <button
+                  key={summary.branch}
+                  type="button"
+                  className={`map-marker ${summary.availabilityKey} ${
+                    selectedBranch === summary.branch ? "active" : ""
+                  }`}
+                  style={style}
+                  onClick={() => {
+                    setSelectedBranch(summary.branch);
+                    setSelectedCity("all");
+                  }}
+                >
+                  <span className="marker-dot" aria-hidden="true" />
+                  <span className="marker-label">{summary.branch}</span>
+                  <span className="marker-meta">{summary.availabilityLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="branch-cards">
+            {branchSummaries.map((summary) => (
+              <article
+                key={summary.branch}
+                className={`branch-card ${summary.availabilityKey} ${
+                  selectedBranch === summary.branch ? "selected" : ""
+                }`}
+              >
+                <div className="branch-card-head">
+                  <div>
+                    <p className="eyebrow">Oddział</p>
+                    <h3>{summary.branch}</h3>
+                  </div>
+                  <span className={`availability-pill ${summary.availabilityKey}`}>
+                    {summary.availabilityLabel}
+                  </span>
+                </div>
+                <p className="muted">{formatCityList(summary.cities)}</p>
+                <div className="branch-card-stats">
+                  <div>
+                    <p className="muted small">Sale</p>
+                    <p className="stat-strong">{summary.roomsCount}</p>
+                  </div>
+                  <div>
+                    <p className="muted small">Wolne sloty</p>
+                    <p className="stat-strong">
+                      {summary.freeSlots}/{summary.totalSlots}
+                    </p>
+                  </div>
+                </div>
+                <div className="chip-row">
+                  {summary.topRooms.map((room) => (
+                    <span key={room} className="chip">
+                      {room}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="panel calendar" data-animate>
         <div className="section-head">
           <div>

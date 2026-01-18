@@ -46,52 +46,55 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
     <section className="card" data-animate>
       <div className="panel-header">
         <div>
-          <p className="eyebrow">My schedule</p>
-          <h2>Reservations</h2>
+          <p className="eyebrow">Mój plan</p>
+          <h2>Rezerwacje</h2>
         </div>
         <button className="ghost-button" onClick={loadReservations}>
-          Refresh
+          Odśwież
         </button>
       </div>
 
-      {loading ? <p className="muted">Loading...</p> : null}
+      {loading ? <p className="muted">Ładowanie...</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
       <div className="reservation-list">
         {reservations.length === 0 ? (
-          <p className="muted">No reservations yet.</p>
+          <p className="muted">Brak rezerwacji.</p>
         ) : (
-          reservations.map((reservation) => (
-            <div
-              key={reservation.id}
-              className={`reservation-item ${reservation.status}`}
-            >
-              <div>
-                <h3>{reservation.roomName}</h3>
-                <p className="muted">
-                  {reservation.roomLocation} -{" "}
-                  {new Date(reservation.startTime).toLocaleString("en-GB", {
-                    dateStyle: "medium",
-                    timeStyle: "short"
-                  })}
-                </p>
+          reservations.map((reservation) => {
+            const statusLabel =
+              reservation.status === "active" ? "aktywna" : "anulowana";
+
+            return (
+              <div
+                key={reservation.id}
+                className={`reservation-item ${reservation.status}`}
+              >
+                <div>
+                  <h3>{reservation.roomName}</h3>
+                  <p className="muted">
+                    {reservation.roomLocation} -{" "}
+                    {new Date(reservation.startTime).toLocaleString("pl-PL", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    })}
+                  </p>
+                </div>
+                <div className="reservation-actions">
+                  <span className="pill status">{statusLabel}</span>
+                  {reservation.status === "active" ? (
+                    <button
+                      className="ghost-button"
+                      onClick={() => handleCancel(reservation.id)}
+                      disabled={actionId === reservation.id}
+                    >
+                      {actionId === reservation.id ? "Anuluję..." : "Anuluj"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
-              <div className="reservation-actions">
-                <span className="pill status">
-                  {reservation.status === "active" ? "active" : "canceled"}
-                </span>
-                {reservation.status === "active" ? (
-                  <button
-                    className="ghost-button"
-                    onClick={() => handleCancel(reservation.id)}
-                    disabled={actionId === reservation.id}
-                  >
-                    {actionId === reservation.id ? "Canceling..." : "Cancel"}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </section>

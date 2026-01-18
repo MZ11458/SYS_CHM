@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type QueryResultRow } from "pg";
 import { config } from "../config";
 
 export const pgPool = new Pool({
@@ -9,6 +9,9 @@ export const pgPool = new Pool({
   database: config.postgres.database
 });
 
-export async function pgQuery<T>(text: string, params: unknown[] = []) {
+export async function pgQuery<T extends QueryResultRow>(
+  text: string,
+  params: unknown[] = []
+) {
   return pgPool.query<T>(text, params);
 }

@@ -21,12 +21,12 @@ const ddlStatements = [
 export async function initSpanner(): Promise<void> {
   const [instanceExists] = await instance.exists();
   if (!instanceExists) {
-    const [operation] = await spanner.createInstance(
+    const [, operation] = await spanner.createInstance(
       config.spanner.instanceId,
       {
         config: "emulator-config",
         displayName: "Local Instance",
-        nodeCount: 1
+        nodes: 1
       }
     );
     await operation.promise();
@@ -34,7 +34,7 @@ export async function initSpanner(): Promise<void> {
 
   const [dbExists] = await database.exists();
   if (!dbExists) {
-    const [operation] = await instance.createDatabase(
+    const [, operation] = await instance.createDatabase(
       config.spanner.databaseId,
       {
         schema: ddlStatements

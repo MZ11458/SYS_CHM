@@ -1,4 +1,4 @@
-import type { Room, User } from "./types";
+import type { AdminStats, Room, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -119,4 +119,14 @@ export async function cancelReservation(token: string, reservationId: string) {
       canceledAt: string;
     };
   }>(response);
+}
+
+export async function fetchAdminStats(token: string) {
+  const response = await fetch(`${API_URL}/api/admin/stats`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  return handleResponse<AdminStats>(response);
 }

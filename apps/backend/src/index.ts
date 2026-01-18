@@ -3,6 +3,7 @@ import express from "express";
 import { config } from "./config";
 import { initSpanner } from "./db/spanner";
 import authRouter from "./routes/auth";
+import adminRouter from "./routes/admin";
 import reservationsRouter from "./routes/reservations";
 import roomsRouter from "./routes/rooms";
 
@@ -12,6 +13,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/reservations", reservationsRouter);
 

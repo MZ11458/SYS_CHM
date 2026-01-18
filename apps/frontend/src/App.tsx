@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
 import ReservationsPanel from "./components/ReservationsPanel";
+import AdminPanel from "./components/AdminPanel";
 import type { User } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
@@ -119,14 +120,7 @@ export default function App() {
       <main className="dashboard">
         {view === "rooms" ? <RoomsCalendar token={token} /> : null}
         {view === "reservations" ? <ReservationsPanel token={token} /> : null}
-        {view === "admin" ? (
-          <section className="card" data-animate>
-            <h2>Coming soon</h2>
-            <p className="muted">
-              This section is enabled in the next milestone.
-            </p>
-          </section>
-        ) : null}
+        {view === "admin" ? <AdminPanel token={token} /> : null}
       </main>
     </div>
   );

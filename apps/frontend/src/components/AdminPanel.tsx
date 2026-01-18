@@ -11,6 +11,24 @@ interface AdminPanelProps {
   token: string;
 }
 
+const errorMessages: Record<string, string> = {
+  admin_stats_failed: "Nie udało się pobrać statystyk.",
+  admin_users_failed: "Nie udało się pobrać listy użytkowników.",
+  missing_fields: "Uzupełnij wszystkie pola.",
+  invalid_role: "Nieprawidłowa rola użytkownika.",
+  invalid_status: "Nieprawidłowy status konta.",
+  user_not_found: "Nie znaleziono użytkownika.",
+  admin_user_update_failed: "Nie udało się zaktualizować użytkownika.",
+  admin_password_reset_failed: "Nie udało się zresetować hasła.",
+  weak_password: "Nowe hasło musi mieć co najmniej 8 znaków.",
+  auth_lookup_failed: "Nie udało się zweryfikować sesji.",
+  forbidden: "Brak uprawnień do wykonania tej operacji.",
+  request_failed: "Wystąpił błąd komunikacji."
+};
+
+const resolveError = (err: any, fallback: string) =>
+  errorMessages[err?.message] || fallback;
+
 export default function AdminPanel({ token }: AdminPanelProps) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -29,7 +47,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       const result = await fetchAdminStats(token);
       setStats(result);
     } catch (err: any) {
-      setStatsError(err?.message || "stats_load_failed");
+      setStatsError(resolveError(err, "Nie udało się pobrać statystyk."));
     } finally {
       setStatsLoading(false);
     }
@@ -42,7 +60,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       const result = await fetchAdminUsers(token);
       setUsers(result.users);
     } catch (err: any) {
-      setUsersError(err?.message || "users_load_failed");
+      setUsersError(resolveError(err, "Nie udało się pobrać listy użytkowników."));
     } finally {
       setUsersLoading(false);
     }
@@ -63,7 +81,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       );
       setActionMessage("Zaktualizowano rolę użytkownika.");
     } catch (err: any) {
-      setUsersError(err?.message || "user_update_failed");
+      setUsersError(resolveError(err, "Nie udało się zaktualizować użytkownika."));
     } finally {
       setActionUserId(null);
     }
@@ -81,7 +99,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
         isActive ? "Konto zostało aktywowane." : "Konto zostało zablokowane."
       );
     } catch (err: any) {
-      setUsersError(err?.message || "user_update_failed");
+      setUsersError(resolveError(err, "Nie udało się zaktualizować użytkownika."));
     } finally {
       setActionUserId(null);
     }
@@ -109,18 +127,19 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       setActionMessage(message);
       window.alert(message);
     } catch (err: any) {
-      setUsersError(err?.message || "password_reset_failed");
+      setUsersError(resolveError(err, "Nie udało się zresetować hasła."));
     } finally {
       setActionUserId(null);
     }
   };
 
   return (
-    <section className="card" data-animate>
-      <div className="panel-header">
+    <section className="panel" data-animate>
+      <div className="section-head">
         <div>
-          <p className="eyebrow">Przegląd administracyjny</p>
+          <p className="eyebrow">Nadzór operacyjny</p>
           <h2>Podsumowanie użycia</h2>
+          <p className="muted">Szybki wgląd w rezerwacje i aktywność zespołu.</p>
         </div>
         <button className="ghost-button" onClick={loadStats}>
           Odśwież
@@ -144,7 +163,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
             <p className="muted">Rezerwacje</p>
             <h3 className="stat-value">{stats.reservations.total}</h3>
             <p className="muted small">
-              Aktywne: {stats.reservations.active} | Anulowane:{" "}
+              Aktywne: {stats.reservations.active} | Anulowane: {" "}
               {stats.reservations.canceled}
             </p>
             <p className="muted small">Dziś: {stats.reservations.today}</p>
@@ -153,9 +172,11 @@ export default function AdminPanel({ token }: AdminPanelProps) {
             <p className="muted">Rezerwacje globalne</p>
             {stats.globalReservations ? (
               <>
-                <h3 className="stat-value">{stats.globalReservations.total}</h3>
+                <h3 className="stat-value">
+                  {stats.globalReservations.total}
+                </h3>
                 <p className="muted small">
-                  Aktywne: {stats.globalReservations.active} | Anulowane:{" "}
+                  Aktywne: {stats.globalReservations.active} | Anulowane: {" "}
                   {stats.globalReservations.canceled}
                 </p>
               </>
@@ -167,7 +188,7 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       ) : null}
 
       <div className="admin-users">
-        <div className="panel-header">
+        <div className="section-head">
           <div>
             <p className="eyebrow">Użytkownicy</p>
             <h2>Zarządzanie kontami</h2>

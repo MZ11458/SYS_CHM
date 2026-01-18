@@ -54,86 +54,132 @@ export default function App() {
 
   if (!token || !user) {
     return (
-      <div className="auth-screen">
-        <LoginForm onAuth={handleAuth} />
-        <div className="auth-aside" data-animate>
-          <p className="eyebrow">Najpierw dostępność</p>
-          <h2>Zaplanuj dzień pracy, zanim zrobi się tłoczno.</h2>
-          <p className="muted">
-            Sprawdź, co jest wolne, zarezerwuj slot i utrzymaj zespoły w
-            synchronizacji bez maili w tę i z powrotem.
-          </p>
-          <div className="stat-grid">
+      <div className="auth-shell">
+        <aside className="auth-visual" data-animate>
+          <div className="brand-row">
+            <span className="brand-mark">SYS</span>
             <div>
-              <span className="stat">12</span>
-              <span className="stat-label">Sale</span>
-            </div>
-            <div>
-              <span className="stat">8</span>
-              <span className="stat-label">Zestawy sprzętu</span>
-            </div>
-            <div>
-              <span className="stat">3</span>
-              <span className="stat-label">Lokalizacje</span>
+              <p className="eyebrow">Rezerwacje zasobów</p>
+              <h1>Centrum operacyjne</h1>
             </div>
           </div>
-        </div>
+          <p className="muted">
+            Planowanie sal, sprzętu i stref pracy w jednym miejscu. Sprawdź
+            dostępność, blokuj sloty i utrzymuj rytm zespołów bez zbędnych maili.
+          </p>
+          <div className="auth-kpis">
+            <div className="kpi-card">
+              <span className="kpi-value">12</span>
+              <span className="kpi-label">Sale</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-value">8</span>
+              <span className="kpi-label">Zestawy sprzętu</span>
+            </div>
+            <div className="kpi-card">
+              <span className="kpi-value">3</span>
+              <span className="kpi-label">Lokalizacje</span>
+            </div>
+          </div>
+          <div className="auth-status">
+            <div className="status-card">
+              <span className="status-label">System</span>
+              <span className="status-value ok">Stabilny</span>
+            </div>
+            <div className="status-card">
+              <span className="status-label">Synchronizacja globalna</span>
+              <span className="status-value">Aktywna</span>
+            </div>
+          </div>
+        </aside>
+        <LoginForm onAuth={handleAuth} />
       </div>
     );
   }
 
   const roleLabel = user.role === "admin" ? "Administrator" : "Użytkownik";
+  const todayLabel = new Date().toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Rezerwacje sal</p>
-          <h1>Witaj, {user.fullName}</h1>
+      <aside className="app-rail">
+        <div className="rail-brand">
+          <span className="brand-mark">SYS</span>
+          <div>
+            <p className="rail-title">Planer zasobów</p>
+            <p className="rail-subtitle">Centrum rezerwacji</p>
+          </div>
         </div>
-        <div className="header-actions">
-          <span className="pill">{roleLabel}</span>
-          <button onClick={handleLogout} className="ghost-button">
-            Wyloguj się
-          </button>
-        </div>
-      </header>
-      <nav className="app-nav">
-        <button
-          className={`nav-button ${view === "rooms" ? "active" : ""}`}
-          onClick={() => setView("rooms")}
-        >
-          Sale
-        </button>
-        <button
-          className={`nav-button ${view === "reservations" ? "active" : ""}`}
-          onClick={() => setView("reservations")}
-        >
-          Moje rezerwacje
-        </button>
-        <button
-          className={`nav-button ${view === "account" ? "active" : ""}`}
-          onClick={() => setView("account")}
-        >
-          Moje konto
-        </button>
-        {user.role === "admin" ? (
+        <nav className="rail-nav">
           <button
-            className={`nav-button ${view === "admin" ? "active" : ""}`}
-            onClick={() => setView("admin")}
+            className={`rail-link ${view === "rooms" ? "active" : ""}`}
+            onClick={() => setView("rooms")}
           >
-            Panel admina
+            <span className="rail-index">01</span>
+            <span className="rail-text">Sale i zasoby</span>
           </button>
-        ) : null}
-      </nav>
-      <main className="dashboard">
-        {view === "rooms" ? <RoomsCalendar token={token} /> : null}
-        {view === "reservations" ? <ReservationsPanel token={token} /> : null}
-        {view === "account" ? (
-          <AccountPanel token={token} user={user} />
-        ) : null}
-        {view === "admin" ? <AdminPanel token={token} /> : null}
-      </main>
+          <button
+            className={`rail-link ${view === "reservations" ? "active" : ""}`}
+            onClick={() => setView("reservations")}
+          >
+            <span className="rail-index">02</span>
+            <span className="rail-text">Moje rezerwacje</span>
+          </button>
+          <button
+            className={`rail-link ${view === "account" ? "active" : ""}`}
+            onClick={() => setView("account")}
+          >
+            <span className="rail-index">03</span>
+            <span className="rail-text">Moje konto</span>
+          </button>
+          {user.role === "admin" ? (
+            <button
+              className={`rail-link ${view === "admin" ? "active" : ""}`}
+              onClick={() => setView("admin")}
+            >
+              <span className="rail-index">04</span>
+              <span className="rail-text">Panel admina</span>
+            </button>
+          ) : null}
+        </nav>
+        <div className="rail-footer">
+          <p className="muted small">Zalogowany jako</p>
+          <p className="rail-user">{user.fullName}</p>
+          <span className="pill">{roleLabel}</span>
+        </div>
+      </aside>
+
+      <div className="app-main">
+        <header className="app-topbar">
+          <div>
+            <p className="eyebrow">Operacje dzienne</p>
+            <h1>Witaj, {user.fullName}</h1>
+            <p className="muted">Dzisiaj: {todayLabel}</p>
+          </div>
+          <div className="topbar-actions">
+            <div className="status-chip">
+              <span className="status-dot" />
+              <span>{roleLabel}</span>
+            </div>
+            <button onClick={handleLogout} className="ghost-button">
+              Wyloguj się
+            </button>
+          </div>
+        </header>
+        <main className="dashboard">
+          {view === "rooms" ? <RoomsCalendar token={token} /> : null}
+          {view === "reservations" ? <ReservationsPanel token={token} /> : null}
+          {view === "account" ? (
+            <AccountPanel token={token} user={user} />
+          ) : null}
+          {view === "admin" ? <AdminPanel token={token} /> : null}
+        </main>
+      </div>
     </div>
   );
 }

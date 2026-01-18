@@ -6,6 +6,18 @@ interface LoginFormProps {
   onAuth: (token: string, user: User) => void;
 }
 
+const errorMessages: Record<string, string> = {
+  missing_credentials: "Podaj adres email i hasło.",
+  invalid_credentials: "Nieprawidłowy email lub hasło.",
+  inactive_user: "Twoje konto jest zablokowane. Skontaktuj się z administratorem.",
+  login_failed: "Nie udało się zalogować. Spróbuj ponownie.",
+  missing_fields: "Uzupełnij wszystkie pola.",
+  weak_password: "Hasło musi mieć co najmniej 8 znaków.",
+  email_exists: "Konto z tym adresem już istnieje.",
+  register_failed: "Nie udało się utworzyć konta.",
+  request_failed: "Nie udało się połączyć z serwerem."
+};
+
 export default function LoginForm({ onAuth }: LoginFormProps) {
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -25,19 +37,27 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
         : await login(email, password);
       onAuth(result.token, result.user);
     } catch (err: any) {
-      setError(err?.message || "login_failed");
+      const fallback = isRegister
+        ? "Nie udało się utworzyć konta."
+        : "Nie udało się zalogować.";
+      setError(errorMessages[err?.message] || fallback);
     } finally {
       setLoading(false);
     }
   };
 
+  const headline = isRegister ? "Utwórz konto" : "Zaloguj się do systemu";
+  const submitLabel = isRegister ? "Utwórz konto" : "Zaloguj się";
+
   return (
     <div className="login-card" data-animate>
       <div className="login-header">
-        <p className="eyebrow">Planer biura</p>
-        <h1>{isRegister ? "Utwórz konto" : "Witaj ponownie"}</h1>
+        <span className="login-badge">
+          {isRegister ? "Rejestracja" : "Dostęp użytkownika"}
+        </span>
+        <h1>{headline}</h1>
         <p className="muted">
-          Rezerwuj sale, sprzęt i strefy pracy w jednym wspólnym kalendarzu.
+          Zarządzaj rezerwacjami sal i zasobów w jednym, spójnym panelu.
         </p>
       </div>
 
@@ -80,7 +100,7 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
         {error ? <p className="error">{error}</p> : null}
 
         <button type="submit" disabled={loading}>
-          {loading ? "Przetwarzanie..." : isRegister ? "Utwórz konto" : "Zaloguj się"}
+          {loading ? "Przetwarzanie..." : submitLabel}
         </button>
       </form>
 
@@ -92,7 +112,7 @@ export default function LoginForm({ onAuth }: LoginFormProps) {
         >
           {isRegister
             ? "Masz już konto? Zaloguj się"
-            : "Nowy tutaj? Utwórz konto"}
+            : "Nowy użytkownik? Utwórz konto"}
         </button>
         <p className="note">Demo admina: admin@local.test / admin123</p>
       </div>

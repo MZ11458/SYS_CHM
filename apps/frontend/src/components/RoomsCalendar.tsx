@@ -8,6 +8,23 @@ interface RoomsCalendarProps {
 
 const HOURS = Array.from({ length: 10 }, (_, index) => 8 + index);
 
+const loadErrorMessages: Record<string, string> = {
+  rooms_fetch_failed: "Nie udało się pobrać dostępności sal.",
+  auth_lookup_failed: "Nie udało się zweryfikować sesji użytkownika.",
+  missing_token: "Brak autoryzacji. Zaloguj się ponownie.",
+  invalid_token: "Sesja wygasła. Zaloguj się ponownie.",
+  request_failed: "Nie udało się pobrać danych."
+};
+
+const actionErrorMessages: Record<string, string> = {
+  slot_taken: "Wybrany slot jest już zajęty.",
+  invalid_time: "Nieprawidłowa godzina rezerwacji.",
+  invalid_range: "Nieprawidłowy zakres rezerwacji.",
+  spanner_sync_failed: "Nie udało się zsynchronizować rezerwacji globalnej.",
+  reservation_create_failed: "Nie udało się utworzyć rezerwacji.",
+  request_failed: "Nie udało się utworzyć rezerwacji."
+};
+
 function toDateInputValue(date: Date) {
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60000);
@@ -63,7 +80,10 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
         }
       } catch (err: any) {
         if (!ignore) {
-          setError(err?.message || "rooms_load_failed");
+          const message =
+            loadErrorMessages[err?.message] ||
+            "Nie udało się pobrać dostępności.";
+          setError(message);
         }
       } finally {
         if (!ignore) {
@@ -116,40 +136,102 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
       setRooms(result.rooms);
       setDraft(null);
     } catch (err: any) {
-      setActionError(err?.message || "reservation_failed");
+      const message =
+        actionErrorMessages[err?.message] ||
+        "Nie udało się utworzyć rezerwacji.";
+      setActionError(message);
     } finally {
       setActionLoading(false);
     }
   };
 
   return (
-    <section className="calendar" data-animate>
-      <div className="calendar-header">
+    <section className="panel calendar" data-animate>
+      <div className="section-head">
         <div>
-          <p className="eyebrow">Dostępność</p>
+          <p className="eyebrow">Dostępność zasobów</p>
           <h2>Sale i zasoby</h2>
+          <p className="muted">
+            Wybierz datę i kliknij wolny slot, aby przygotować rezerwację.
+          </p>
         </div>
-        <div className="calendar-controls">
-          <label>
-            Data
+        <div className="section-actions">
+          <label className="field">
+            <span>Data</span>
             <input
               type="date"
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
             />
           </label>
-          {loading ? <span className="muted">Ładowanie...</span> : null}
+          {loading ? <span className="status-text">Ładowanie...</span> : null}
         </div>
       </div>
 
-      <div className="reservation-panel">
-        <div>
-          <p className="eyebrow">Kreator rezerwacji</p>
+      {error ? <p className="error">{error}</p> : null}
+
+      <div className="calendar-body">
+        <div className="calendar-grid">
+          <div className="calendar-row header">
+            <div className="room-cell">Sala</div>
+            {slots.map((slot) => (
+              <div key={slot.label} className="slot-cell">
+                {slot.label}
+              </div>
+            ))}
+          </div>
+
+          {rooms.map((room) => (
+            <div key={room.id} className="calendar-row">
+              <div className="room-cell">
+                <div className="room-title">
+                  <h3>{room.name}</h3>
+                  <span className="muted">{room.location}</span>
+                </div>
+                <div className="room-meta">
+                  <span>{room.capacity} miejsc</span>
+                  <div className="chip-row">
+                    {room.resources.map((resource) => (
+                      <span key={resource} className="chip">
+                        {resource}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {slots.map((slot) => {
+                const reserved = room.reservations.some((reservation) =>
+                  hasOverlap(reservation, slot.start, slot.end)
+                );
+                const selected =
+                  draft?.room.id === room.id && draft?.start === slot.start;
+                return (
+                  <div
+                    key={`${room.id}-${slot.label}`}
+                    className={`slot-cell ${reserved ? "busy" : "free"} ${
+                      selected ? "selected" : ""
+                    } ${reserved ? "" : "clickable"}`}
+                    onClick={() => {
+                      if (!reserved) {
+                        setDraft({ room, start: slot.start, end: slot.end });
+                      }
+                    }}
+                  >
+                    <span>{reserved ? "Zajęte" : "Wolne"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        <aside className="reservation-panel">
+          <p className="eyebrow">Rezerwacja</p>
           {draft ? (
             <>
               <h3>{draft.room.name}</h3>
               <p className="muted">
-                {draft.room.location} · {formatTimeLabel(draft.start)}-
+                {draft.room.location} - {formatTimeLabel(draft.start)}-
                 {formatTimeLabel(draft.end)}
               </p>
             </>
@@ -158,77 +240,21 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
               Wybierz wolny slot, aby przygotować rezerwację.
             </p>
           )}
-        </div>
-        <div className="reservation-actions">
-          <button onClick={handleReserve} disabled={!draft || actionLoading}>
-            {actionLoading ? "Rezerwuję..." : "Potwierdź rezerwację"}
-          </button>
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={() => setDraft(null)}
-            disabled={!draft || actionLoading}
-          >
-            Wyczyść
-          </button>
-        </div>
-        {actionError ? <p className="error">{actionError}</p> : null}
-      </div>
-
-      {error ? <p className="error">{error}</p> : null}
-
-      <div className="calendar-grid">
-        <div className="calendar-row header">
-          <div className="room-cell">Sala</div>
-          {slots.map((slot) => (
-            <div key={slot.label} className="slot-cell">
-              {slot.label}
-            </div>
-          ))}
-        </div>
-
-        {rooms.map((room) => (
-          <div key={room.id} className="calendar-row">
-            <div className="room-cell">
-              <div className="room-title">
-                <h3>{room.name}</h3>
-                <span className="muted">{room.location}</span>
-              </div>
-              <div className="room-meta">
-                <span>{room.capacity} miejsc</span>
-                <div className="chip-row">
-                  {room.resources.map((resource) => (
-                    <span key={resource} className="chip">
-                      {resource}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            {slots.map((slot) => {
-              const reserved = room.reservations.some((reservation) =>
-                hasOverlap(reservation, slot.start, slot.end)
-              );
-              const selected =
-                draft?.room.id === room.id && draft?.start === slot.start;
-              return (
-                <div
-                  key={`${room.id}-${slot.label}`}
-                  className={`slot-cell ${reserved ? "busy" : "free"} ${
-                    selected ? "selected" : ""
-                  } ${reserved ? "" : "clickable"}`}
-                  onClick={() => {
-                    if (!reserved) {
-                      setDraft({ room, start: slot.start, end: slot.end });
-                    }
-                  }}
-                >
-                  <span>{reserved ? "Zajęte" : "Wolne"}</span>
-                </div>
-              );
-            })}
+          <div className="reservation-actions">
+            <button onClick={handleReserve} disabled={!draft || actionLoading}>
+              {actionLoading ? "Rezerwuję..." : "Potwierdź rezerwację"}
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => setDraft(null)}
+              disabled={!draft || actionLoading}
+            >
+              Wyczyść
+            </button>
           </div>
-        ))}
+          {actionError ? <p className="error">{actionError}</p> : null}
+        </aside>
       </div>
     </section>
   );

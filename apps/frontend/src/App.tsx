@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
+import ReservationsPanel from "./components/ReservationsPanel";
 import type { User } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
@@ -35,6 +36,7 @@ export default function App() {
   const handleAuth = (nextToken: string, nextUser: User) => {
     setToken(nextToken);
     setUser(nextUser);
+    setView("rooms");
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ token: nextToken, user: nextUser })
@@ -44,6 +46,7 @@ export default function App() {
   const handleLogout = () => {
     setToken(null);
     setUser(null);
+    setView("rooms");
     localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -114,16 +117,16 @@ export default function App() {
         ) : null}
       </nav>
       <main className="dashboard">
-        {view === "rooms" ? (
-          <RoomsCalendar token={token} />
-        ) : (
+        {view === "rooms" ? <RoomsCalendar token={token} /> : null}
+        {view === "reservations" ? <ReservationsPanel token={token} /> : null}
+        {view === "admin" ? (
           <section className="card" data-animate>
             <h2>Coming soon</h2>
             <p className="muted">
               This section is enabled in the next milestone.
             </p>
           </section>
-        )}
+        ) : null}
       </main>
     </div>
   );

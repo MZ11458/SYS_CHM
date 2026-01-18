@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { cancelReservation, fetchReservations } from "../api";
+import type { NotifyPayload, StatusUpdate } from "../notifications";
 import type { UserReservation } from "../types";
 
 interface ReservationsPanelProps {
   token: string;
+  onNotify?: (payload: NotifyPayload) => void;
+  onStatusUpdate?: (update: StatusUpdate) => void;
+  onRemindersUpdate?: (reservations: UserReservation[]) => void;
 }
 
 const errorMessages: Record<string, string> = {
@@ -12,14 +16,22 @@ const errorMessages: Record<string, string> = {
   not_found: "Nie znaleziono rezerwacji.",
   already_canceled: "Rezerwacja została już anulowana.",
   forbidden: "Brak uprawnień do anulowania tej rezerwacji.",
-  spanner_sync_failed: "Nie udało się zsynchronizować anulowania globalnego.",
+  auth_lookup_failed: "Nie udało się zweryfikować sesji.",
+  missing_token: "Brak autoryzacji. Zaloguj się ponownie.",
+  invalid_token: "Sesja wygasła. Zaloguj się ponownie.",
+  spanner_sync_failed: "Anulowanie zapisane lokalnie, bez synchronizacji globalnej.",
   request_failed: "Wystąpił błąd komunikacji."
 };
 
 const resolveError = (err: any, fallback: string) =>
   errorMessages[err?.message] || fallback;
 
-export default function ReservationsPanel({ token }: ReservationsPanelProps) {
+export default function ReservationsPanel({
+  token,
+  onNotify,
+  onStatusUpdate,
+  onRemindersUpdate
+}: ReservationsPanelProps) {
   const [reservations, setReservations] = useState<UserReservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +43,11 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
     try {
       const result = await fetchReservations(token);
       setReservations(result.reservations);
+      onRemindersUpdate?.(result.reservations);
+      onStatusUpdate?.({ api: "ok" });
     } catch (err: any) {
       setError(resolveError(err, "Nie udało się pobrać Twoich rezerwacji."));
+      onStatusUpdate?.({ api: "warning" });
     } finally {
       setLoading(false);
     }
@@ -48,8 +63,34 @@ export default function ReservationsPanel({ token }: ReservationsPanelProps) {
     try {
       await cancelReservation(token, reservationId);
       await loadReservations();
+      onNotify?.({
+        title: "Rezerwacja anulowana",
+        message: "Slot został anulowany i zsynchronizowany globalnie.",
+        tone: "success",
+        status: { api: "ok", spanner: "ok" }
+      });
     } catch (err: any) {
-      setError(resolveError(err, "Nie udało się anulować rezerwacji."));
+      const message = resolveError(err, "Nie udało się anulować rezerwacji.");
+      setError(message);
+
+      if (err?.message === "spanner_sync_failed") {
+        onStatusUpdate?.({ spanner: "warning" });
+        onNotify?.({
+          title: "Synchronizacja globalna",
+          message:
+            "Anulowanie zostało zapisane lokalnie, ale globalna synchronizacja nie powiodła się.",
+          tone: "warning",
+          status: { spanner: "warning" }
+        });
+      } else {
+        onStatusUpdate?.({ api: "warning" });
+        onNotify?.({
+          title: "Anulowanie nieudane",
+          message,
+          tone: "error",
+          status: { api: "warning" }
+        });
+      }
     } finally {
       setActionId(null);
     }

@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
+import { fetchReservations } from "./api";
 import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
 import ReservationsPanel from "./components/ReservationsPanel";
 import AdminPanel from "./components/AdminPanel";
 import AccountPanel from "./components/AccountPanel";
-import type { User } from "./types";
+import NotificationsPanel from "./components/NotificationsPanel";
+import type {
+  Alert,
+  NotifyPayload,
+  Reminder,
+  StatusUpdate,
+  SystemStatus
+} from "./notifications";
+import type { User, UserReservation } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
+const MAX_ALERTS = 6;
 
 type StoredAuth = {
   token: string;
@@ -15,10 +25,42 @@ type StoredAuth = {
 
 type View = "rooms" | "reservations" | "account" | "admin";
 
+const createAlertId = () =>
+  `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildReminders = (reservations: UserReservation[]): Reminder[] => {
+  const now = Date.now();
+  return reservations
+    .filter(
+      (reservation) =>
+        reservation.status === "active" &&
+        new Date(reservation.startTime).getTime() > now
+    )
+    .sort(
+      (left, right) =>
+        new Date(left.startTime).getTime() -
+        new Date(right.startTime).getTime()
+    )
+    .slice(0, 3)
+    .map((reservation) => ({
+      id: reservation.id,
+      title: reservation.roomName,
+      location: reservation.roomLocation,
+      startTime: reservation.startTime
+    }));
+};
+
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<View>("rooms");
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>(() => ({
+    api: navigator.onLine ? "ok" : "down",
+    spanner: "ok",
+    updatedAt: Date.now()
+  }));
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -35,6 +77,79 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleOnline = () => updateStatus({ api: "ok" });
+    const handleOffline = () => updateStatus({ api: "down" });
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      refreshReminders();
+    }
+  }, [token]);
+
+  const updateStatus = (update: StatusUpdate) => {
+    if (Object.keys(update).length === 0) {
+      return;
+    }
+
+    setSystemStatus((prev) => ({
+      ...prev,
+      ...update,
+      updatedAt: Date.now()
+    }));
+  };
+
+  const notify = (payload: NotifyPayload) => {
+    const alert: Alert = {
+      id: createAlertId(),
+      title: payload.title,
+      message: payload.message,
+      tone: payload.tone,
+      createdAt: Date.now()
+    };
+
+    setAlerts((prev) => [alert, ...prev].slice(0, MAX_ALERTS));
+
+    if (payload.status) {
+      updateStatus(payload.status);
+    }
+  };
+
+  const refreshReminders = async () => {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const result = await fetchReservations(token);
+      setReminders(buildReminders(result.reservations));
+      updateStatus({ api: "ok" });
+    } catch {
+      updateStatus({ api: "warning" });
+    }
+  };
+
+  const handleRemindersUpdate = (reservations: UserReservation[]) => {
+    setReminders(buildReminders(reservations));
+  };
+
+  const handleDismissAlert = (alertId: string) => {
+    setAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+  };
+
+  const handleClearAlerts = () => {
+    setAlerts([]);
+  };
+
   const handleAuth = (nextToken: string, nextUser: User) => {
     setToken(nextToken);
     setUser(nextUser);
@@ -49,6 +164,8 @@ export default function App() {
     setToken(null);
     setUser(null);
     setView("rooms");
+    setAlerts([]);
+    setReminders([]);
     localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -92,7 +209,7 @@ export default function App() {
             </div>
           </div>
         </aside>
-        <LoginForm onAuth={handleAuth} />
+        <LoginForm onAuth={handleAuth} onNotify={notify} />
       </div>
     );
   }
@@ -166,18 +283,57 @@ export default function App() {
               <span className="status-dot" />
               <span>{roleLabel}</span>
             </div>
+            <div className="notification-chip">
+              <span>Alerty</span>
+              <span className="notification-count">{alerts.length}</span>
+            </div>
             <button onClick={handleLogout} className="ghost-button">
               Wyloguj się
             </button>
           </div>
         </header>
         <main className="dashboard">
-          {view === "rooms" ? <RoomsCalendar token={token} /> : null}
-          {view === "reservations" ? <ReservationsPanel token={token} /> : null}
-          {view === "account" ? (
-            <AccountPanel token={token} user={user} />
-          ) : null}
-          {view === "admin" ? <AdminPanel token={token} /> : null}
+          <div className="dashboard-main">
+            {view === "rooms" ? (
+              <RoomsCalendar
+                token={token}
+                onNotify={notify}
+                onStatusUpdate={updateStatus}
+                onRemindersRefresh={refreshReminders}
+              />
+            ) : null}
+            {view === "reservations" ? (
+              <ReservationsPanel
+                token={token}
+                onNotify={notify}
+                onStatusUpdate={updateStatus}
+                onRemindersUpdate={handleRemindersUpdate}
+              />
+            ) : null}
+            {view === "account" ? (
+              <AccountPanel
+                token={token}
+                user={user}
+                onNotify={notify}
+                onStatusUpdate={updateStatus}
+              />
+            ) : null}
+            {view === "admin" ? (
+              <AdminPanel
+                token={token}
+                onNotify={notify}
+                onStatusUpdate={updateStatus}
+              />
+            ) : null}
+          </div>
+          <NotificationsPanel
+            alerts={alerts}
+            reminders={reminders}
+            systemStatus={systemStatus}
+            onDismissAlert={handleDismissAlert}
+            onClearAlerts={handleClearAlerts}
+            onRefresh={refreshReminders}
+          />
         </main>
       </div>
     </div>

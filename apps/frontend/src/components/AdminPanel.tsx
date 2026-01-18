@@ -5,10 +5,13 @@ import {
   resetAdminUserPassword,
   updateAdminUser
 } from "../api";
+import type { NotifyPayload, StatusUpdate } from "../notifications";
 import type { AdminStats, AdminUser } from "../types";
 
 interface AdminPanelProps {
   token: string;
+  onNotify?: (payload: NotifyPayload) => void;
+  onStatusUpdate?: (update: StatusUpdate) => void;
 }
 
 const errorMessages: Record<string, string> = {
@@ -29,7 +32,11 @@ const errorMessages: Record<string, string> = {
 const resolveError = (err: any, fallback: string) =>
   errorMessages[err?.message] || fallback;
 
-export default function AdminPanel({ token }: AdminPanelProps) {
+export default function AdminPanel({
+  token,
+  onNotify,
+  onStatusUpdate
+}: AdminPanelProps) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -46,8 +53,10 @@ export default function AdminPanel({ token }: AdminPanelProps) {
     try {
       const result = await fetchAdminStats(token);
       setStats(result);
+      onStatusUpdate?.({ api: "ok" });
     } catch (err: any) {
       setStatsError(resolveError(err, "Nie udało się pobrać statystyk."));
+      onStatusUpdate?.({ api: "warning" });
     } finally {
       setStatsLoading(false);
     }
@@ -59,8 +68,10 @@ export default function AdminPanel({ token }: AdminPanelProps) {
     try {
       const result = await fetchAdminUsers(token);
       setUsers(result.users);
+      onStatusUpdate?.({ api: "ok" });
     } catch (err: any) {
       setUsersError(resolveError(err, "Nie udało się pobrać listy użytkowników."));
+      onStatusUpdate?.({ api: "warning" });
     } finally {
       setUsersLoading(false);
     }
@@ -79,9 +90,23 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       setUsers((prev) =>
         prev.map((user) => (user.id === userId ? result.user : user))
       );
-      setActionMessage("Zaktualizowano rolę użytkownika.");
+      const message = "Zaktualizowano rolę użytkownika.";
+      setActionMessage(message);
+      onNotify?.({
+        title: "Zmiana roli",
+        message,
+        tone: "success",
+        status: { api: "ok" }
+      });
     } catch (err: any) {
-      setUsersError(resolveError(err, "Nie udało się zaktualizować użytkownika."));
+      const message = resolveError(err, "Nie udało się zaktualizować użytkownika.");
+      setUsersError(message);
+      onNotify?.({
+        title: "Nie udało się zmienić roli",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setActionUserId(null);
     }
@@ -95,11 +120,25 @@ export default function AdminPanel({ token }: AdminPanelProps) {
       setUsers((prev) =>
         prev.map((user) => (user.id === userId ? result.user : user))
       );
-      setActionMessage(
-        isActive ? "Konto zostało aktywowane." : "Konto zostało zablokowane."
-      );
+      const message = isActive
+        ? "Konto zostało aktywowane."
+        : "Konto zostało zablokowane.";
+      setActionMessage(message);
+      onNotify?.({
+        title: "Status konta",
+        message,
+        tone: "success",
+        status: { api: "ok" }
+      });
     } catch (err: any) {
-      setUsersError(resolveError(err, "Nie udało się zaktualizować użytkownika."));
+      const message = resolveError(err, "Nie udało się zaktualizować użytkownika.");
+      setUsersError(message);
+      onNotify?.({
+        title: "Nie udało się zmienić statusu",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setActionUserId(null);
     }
@@ -126,8 +165,21 @@ export default function AdminPanel({ token }: AdminPanelProps) {
 
       setActionMessage(message);
       window.alert(message);
+      onNotify?.({
+        title: "Reset hasła",
+        message,
+        tone: "success",
+        status: { api: "ok" }
+      });
     } catch (err: any) {
-      setUsersError(resolveError(err, "Nie udało się zresetować hasła."));
+      const message = resolveError(err, "Nie udało się zresetować hasła.");
+      setUsersError(message);
+      onNotify?.({
+        title: "Reset hasła nieudany",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setActionUserId(null);
     }

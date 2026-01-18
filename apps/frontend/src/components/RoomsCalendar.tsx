@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { createReservation, fetchRooms } from "../api";
+import type { NotifyPayload, StatusUpdate } from "../notifications";
 import type { Reservation, Room } from "../types";
 
 interface RoomsCalendarProps {
   token: string;
+  onNotify?: (payload: NotifyPayload) => void;
+  onStatusUpdate?: (update: StatusUpdate) => void;
+  onRemindersRefresh?: () => void;
 }
 
 const HOURS = Array.from({ length: 10 }, (_, index) => 8 + index);
@@ -20,7 +24,8 @@ const actionErrorMessages: Record<string, string> = {
   slot_taken: "Wybrany slot jest już zajęty.",
   invalid_time: "Nieprawidłowa godzina rezerwacji.",
   invalid_range: "Nieprawidłowy zakres rezerwacji.",
-  spanner_sync_failed: "Nie udało się zsynchronizować rezerwacji globalnej.",
+  missing_user: "Brak danych użytkownika.",
+  spanner_sync_failed: "Rezerwacja zapisana lokalnie, brak synchronizacji globalnej.",
   reservation_create_failed: "Nie udało się utworzyć rezerwacji.",
   request_failed: "Nie udało się utworzyć rezerwacji."
 };
@@ -52,7 +57,12 @@ function hasOverlap(
   return start < slotEnd && end > slotStart;
 }
 
-export default function RoomsCalendar({ token }: RoomsCalendarProps) {
+export default function RoomsCalendar({
+  token,
+  onNotify,
+  onStatusUpdate,
+  onRemindersRefresh
+}: RoomsCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(() =>
     toDateInputValue(new Date())
   );
@@ -77,6 +87,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
         const result = await fetchRooms(selectedDate, token);
         if (!ignore) {
           setRooms(result.rooms);
+          onStatusUpdate?.({ api: "ok" });
         }
       } catch (err: any) {
         if (!ignore) {
@@ -84,6 +95,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
             loadErrorMessages[err?.message] ||
             "Nie udało się pobrać dostępności.";
           setError(message);
+          onStatusUpdate?.({ api: "warning" });
         }
       } finally {
         if (!ignore) {
@@ -97,7 +109,7 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
     return () => {
       ignore = true;
     };
-  }, [selectedDate, token]);
+  }, [selectedDate, token, onStatusUpdate]);
 
   useEffect(() => {
     setDraft(null);
@@ -135,11 +147,37 @@ export default function RoomsCalendar({ token }: RoomsCalendarProps) {
       const result = await fetchRooms(selectedDate, token);
       setRooms(result.rooms);
       setDraft(null);
+      onStatusUpdate?.({ api: "ok", spanner: "ok" });
+      onRemindersRefresh?.();
+      onNotify?.({
+        title: "Rezerwacja utworzona",
+        message: "Slot został zapisany i zsynchronizowany globalnie.",
+        tone: "success"
+      });
     } catch (err: any) {
       const message =
         actionErrorMessages[err?.message] ||
         "Nie udało się utworzyć rezerwacji.";
       setActionError(message);
+
+      if (err?.message === "spanner_sync_failed") {
+        onStatusUpdate?.({ spanner: "warning" });
+        onNotify?.({
+          title: "Synchronizacja globalna",
+          message:
+            "Rezerwacja została zapisana lokalnie, ale globalna synchronizacja nie powiodła się.",
+          tone: "warning",
+          status: { spanner: "warning" }
+        });
+      } else {
+        onStatusUpdate?.({ api: "warning" });
+        onNotify?.({
+          title: "Rezerwacja nieudana",
+          message,
+          tone: "error",
+          status: { api: "warning" }
+        });
+      }
     } finally {
       setActionLoading(false);
     }

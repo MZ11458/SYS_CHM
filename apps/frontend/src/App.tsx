@@ -3,6 +3,7 @@ import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
 import ReservationsPanel from "./components/ReservationsPanel";
 import AdminPanel from "./components/AdminPanel";
+import AccountPanel from "./components/AccountPanel";
 import type { User } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
@@ -12,7 +13,7 @@ type StoredAuth = {
   user: User;
 };
 
-type View = "rooms" | "reservations" | "admin";
+type View = "rooms" | "reservations" | "account" | "admin";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -110,6 +111,12 @@ export default function App() {
         >
           Moje rezerwacje
         </button>
+        <button
+          className={`nav-button ${view === "account" ? "active" : ""}`}
+          onClick={() => setView("account")}
+        >
+          Moje konto
+        </button>
         {user.role === "admin" ? (
           <button
             className={`nav-button ${view === "admin" ? "active" : ""}`}
@@ -122,6 +129,9 @@ export default function App() {
       <main className="dashboard">
         {view === "rooms" ? <RoomsCalendar token={token} /> : null}
         {view === "reservations" ? <ReservationsPanel token={token} /> : null}
+        {view === "account" ? (
+          <AccountPanel token={token} user={user} />
+        ) : null}
         {view === "admin" ? <AdminPanel token={token} /> : null}
       </main>
     </div>

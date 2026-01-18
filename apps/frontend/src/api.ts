@@ -177,3 +177,20 @@ export async function resetAdminUserPassword(
 
   return handleResponse<{ password: string; generated: boolean }>(response);
 }
+
+export async function changePassword(
+  token: string,
+  currentPassword: string,
+  newPassword: string
+) {
+  const response = await fetch(`${API_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+
+  return handleResponse<{ status: "ok" }>(response);
+}

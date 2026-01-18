@@ -29,6 +29,8 @@ Monorepo with a React + TypeScript frontend and a Node.js + TypeScript backend.
 3) Seeded admin account
    - email: admin@local.test
    - password: admin123
+4) If schema changes, reset data
+   - docker compose down -v
 
 ## Cloud Spanner Emulator
 1) Start the emulator

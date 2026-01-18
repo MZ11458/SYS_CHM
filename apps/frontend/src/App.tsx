@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import LoginForm from "./components/LoginForm";
+import RoomsCalendar from "./components/RoomsCalendar";
 import type { User } from "./types";
 
 const STORAGE_KEY = "room-booking-auth";
@@ -9,9 +10,12 @@ type StoredAuth = {
   user: User;
 };
 
+type View = "rooms" | "reservations" | "admin";
+
 export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [view, setView] = useState<View>("rooms");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -87,20 +91,39 @@ export default function App() {
           </button>
         </div>
       </header>
+      <nav className="app-nav">
+        <button
+          className={`nav-button ${view === "rooms" ? "active" : ""}`}
+          onClick={() => setView("rooms")}
+        >
+          Rooms
+        </button>
+        <button
+          className={`nav-button ${view === "reservations" ? "active" : ""}`}
+          onClick={() => setView("reservations")}
+        >
+          My reservations
+        </button>
+        {user.role === "admin" ? (
+          <button
+            className={`nav-button ${view === "admin" ? "active" : ""}`}
+            onClick={() => setView("admin")}
+          >
+            Admin
+          </button>
+        ) : null}
+      </nav>
       <main className="dashboard">
-        <section className="card" data-animate>
-          <h2>Next up</h2>
-          <p className="muted">
-            Calendar, reservations, and admin insights appear in the next
-            milestones.
-          </p>
-        </section>
-        <section className="card highlight" data-animate>
-          <h2>Your spaces</h2>
-          <p className="muted">
-            Track meeting rooms, projectors, and focus booths across the office.
-          </p>
-        </section>
+        {view === "rooms" ? (
+          <RoomsCalendar token={token} />
+        ) : (
+          <section className="card" data-animate>
+            <h2>Coming soon</h2>
+            <p className="muted">
+              This section is enabled in the next milestone.
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );

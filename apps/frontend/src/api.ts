@@ -1,4 +1,4 @@
-import type { User } from "./types";
+import type { Room, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -37,4 +37,14 @@ export async function register(
   });
 
   return handleResponse<{ token: string; user: User }>(response);
+}
+
+export async function fetchRooms(date: string, token: string) {
+  const response = await fetch(`${API_URL}/api/rooms?date=${date}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  return handleResponse<{ date: string; rooms: Room[] }>(response);
 }

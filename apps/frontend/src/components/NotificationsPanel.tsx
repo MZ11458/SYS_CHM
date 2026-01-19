@@ -61,17 +61,13 @@ export default function NotificationsPanel({
       className={`panel notifications-panel ${isOpen ? "" : "collapsed"}`}
       data-animate
     >
-      <div className="section-head">
-        <div>
+      <div className="section-head notifications-header">
+        <div className="notifications-title">
           <p className="eyebrow">Powiadomienia</p>
           <h2>Centrum stanu</h2>
           <p className="muted">Monitoruj synchronizację i najbliższe zdarzenia.</p>
         </div>
         <div className="notifications-actions">
-          <div className="notifications-summary">
-            <span className="pill status">Alerty: {alertCount}</span>
-            <span className="pill status">Przypomnienia: {reminderCount}</span>
-          </div>
           <button className="ghost-button" onClick={onRefresh}>
             Odśwież
           </button>
@@ -86,9 +82,27 @@ export default function NotificationsPanel({
         </div>
       </div>
 
+      <div className="notifications-meta">
+        <div className="notifications-counts">
+          <div className="count-chip">
+            <span className="count-label">Alerty</span>
+            <span className="count-value">{alertCount}</span>
+          </div>
+          <div className="count-chip">
+            <span className="count-label">Przypomnienia</span>
+            <span className="count-value">{reminderCount}</span>
+          </div>
+        </div>
+        <span className="muted small">
+          Aktualizacja: {formatStatusTime(systemStatus.updatedAt)}
+        </span>
+      </div>
+
       <div id="notifications-body" className="notifications-body" hidden={!isOpen}>
         <div className="notifications-section">
-          <p className="section-label">Status synchronizacji</p>
+          <div className="section-title">
+            <p className="section-label">Status synchronizacji</p>
+          </div>
           <div className="status-list">
             <div className="status-item">
               <span>API i dane lokalne</span>
@@ -103,9 +117,6 @@ export default function NotificationsPanel({
               </span>
             </div>
           </div>
-          <p className="muted small">
-            Aktualizacja: {formatStatusTime(systemStatus.updatedAt)}
-          </p>
         </div>
 
         <div className="notifications-section">

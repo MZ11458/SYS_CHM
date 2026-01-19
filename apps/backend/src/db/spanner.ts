@@ -18,7 +18,9 @@ const ddlStatements = [
   ) PRIMARY KEY (ReservationId)`
 ];
 
-export async function initSpanner(): Promise<void> {
+let initPromise: Promise<void> | null = null;
+
+async function ensureInstanceAndDatabase(): Promise<void> {
   const [instanceExists] = await instance.exists();
   if (!instanceExists) {
     const [, operation] = await spanner.createInstance(
@@ -44,8 +46,35 @@ export async function initSpanner(): Promise<void> {
   }
 }
 
+export async function ensureSpannerReady(): Promise<void> {
+  if (initPromise) {
+    return initPromise;
+  }
+
+  initPromise = ensureInstanceAndDatabase();
+  try {
+    await initPromise;
+  } finally {
+    initPromise = null;
+  }
+}
+
+export async function initSpanner(): Promise<void> {
+  await ensureSpannerReady();
+}
+
 export function getSpannerDatabase() {
   return database;
+}
+
+export async function checkSpannerHealth(): Promise<boolean> {
+  try {
+    await ensureSpannerReady();
+    await database.run({ sql: "SELECT 1" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function insertGlobalReservation(input: {
@@ -58,6 +87,7 @@ export async function insertGlobalReservation(input: {
   createdAt: Date;
   canceledAt?: Date | null;
 }) {
+  await ensureSpannerReady();
   const table = database.table("GlobalReservations");
   await table.insert([
     {
@@ -78,6 +108,7 @@ export async function cancelGlobalReservation(input: {
   status: string;
   canceledAt: Date;
 }) {
+  await ensureSpannerReady();
   const table = database.table("GlobalReservations");
   await table.update([
     {
@@ -89,6 +120,7 @@ export async function cancelGlobalReservation(input: {
 }
 
 export async function fetchGlobalStats() {
+  await ensureSpannerReady();
   const [rows] = await database.run({
     sql: "SELECT Status, COUNT(1) AS Count FROM GlobalReservations GROUP BY Status"
   });

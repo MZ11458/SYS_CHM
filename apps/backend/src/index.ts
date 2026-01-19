@@ -6,6 +6,7 @@ import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 import reservationsRouter from "./routes/reservations";
 import roomsRouter from "./routes/rooms";
+import healthRouter from "./routes/health";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/reservations", reservationsRouter);
+app.use("/api/health", healthRouter);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

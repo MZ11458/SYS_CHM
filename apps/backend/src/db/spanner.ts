@@ -4,6 +4,7 @@ import { config } from "../config";
 const spanner = new Spanner({ projectId: config.spanner.projectId });
 const instance = spanner.instance(config.spanner.instanceId);
 const database = instance.database(config.spanner.databaseId);
+const useEmulator = Boolean(config.spanner.emulatorHost);
 
 const ddlStatements = [
   `CREATE TABLE GlobalReservations (
@@ -21,6 +22,10 @@ const ddlStatements = [
 let initPromise: Promise<void> | null = null;
 
 async function ensureInstanceAndDatabase(): Promise<void> {
+  if (!useEmulator) {
+    return;
+  }
+
   const [instanceExists] = await instance.exists();
   if (!instanceExists) {
     const [, operation] = await spanner.createInstance(

@@ -7,6 +7,21 @@ import { requireAdmin, requireAuth } from "../middleware/auth";
 
 const router = Router();
 
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
 router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
   try {
     const [usersResult, roomsResult, reservationsResult, todayResult] =
@@ -34,7 +49,10 @@ router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
       }
     }
 
-    const globalStats = await fetchGlobalStats().catch(() => null);
+    const globalStats = await withTimeout(
+      fetchGlobalStats().catch(() => null),
+      1500
+    ).catch(() => null);
 
     return res.json({
       users: { total: Number(usersResult.rows[0].count) },

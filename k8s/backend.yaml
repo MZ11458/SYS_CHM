@@ -1,0 +1,61 @@
+# Replace REPLACE_WITH_* placeholders before applying.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  PORT: "4000"
+  NODE_ENV: "production"
+  POSTGRES_HOST: "127.0.0.1"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "room_booking"
+  POSTGRES_USER: "room_user"
+  SPANNER_PROJECT_ID: "REPLACE_WITH_PROJECT_ID"
+  SPANNER_INSTANCE_ID: "room-booking-global"
+  SPANNER_DATABASE_ID: "room_booking_global"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: room-booking-backend
+  template:
+    metadata:
+      labels:
+        app: room-booking-backend
+    spec:
+      serviceAccountName: backend-sa
+      containers:
+        - name: api
+          image: REPLACE_WITH_BACKEND_IMAGE
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secrets
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.4
+          args:
+            - "--address=127.0.0.1"
+            - "--port=5432"
+            - "REPLACE_WITH_CONNECTION_NAME"
+          securityContext:
+            runAsNonRoot: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: room-booking-backend
+  ports:
+    - port: 80
+      targetPort: 4000

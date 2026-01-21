@@ -1,0 +1,5 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build','-t','REPLACE_WITH_FRONTEND_IMAGE','-f','apps/frontend/Dockerfile','--build-arg','VITE_API_URL=REPLACE_WITH_API_URL','.']
+images:
+- 'REPLACE_WITH_FRONTEND_IMAGE'

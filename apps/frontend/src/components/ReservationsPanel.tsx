@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cancelReservation, fetchReservations } from "../api";
+import { formatRoomLocation } from "../roomLabels";
 import type { NotifyPayload, StatusUpdate } from "../notifications";
 import type { UserReservation } from "../types";
 
@@ -128,7 +129,7 @@ export default function ReservationsPanel({
                 <div>
                   <h3>{reservation.roomName}</h3>
                   <p className="muted">
-                    {reservation.roomLocation} -{" "}
+                    {formatRoomLocation(reservation.roomLocation)} -{" "}
                     {new Date(reservation.startTime).toLocaleString("pl-PL", {
                       dateStyle: "medium",
                       timeStyle: "short"

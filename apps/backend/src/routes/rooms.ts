@@ -20,11 +20,12 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     const roomsResult = await pgQuery<{
       id: string;
       name: string;
+      branch: string;
       location: string;
       capacity: number;
       resources: unknown;
     }>(
-      "SELECT id, name, location, capacity, resources FROM rooms ORDER BY name"
+      "SELECT id, name, branch, location, capacity, resources FROM rooms ORDER BY name"
     );
 
     const reservationsResult = await pgQuery<{
@@ -66,6 +67,7 @@ router.get("/", requireAuth, async (req: AuthenticatedRequest, res) => {
       return {
         id: room.id,
         name: room.name,
+        branch: room.branch,
         location: room.location,
         capacity: room.capacity,
         resources,

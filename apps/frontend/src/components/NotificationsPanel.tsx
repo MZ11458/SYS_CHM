@@ -4,6 +4,7 @@ import type {
   StatusLevel,
   SystemStatus
 } from "../notifications";
+import { formatRoomLocation } from "../roomLabels";
 
 interface NotificationsPanelProps {
   alerts: Alert[];
@@ -120,7 +121,8 @@ export default function NotificationsPanel({
                   <div>
                     <p className="reminder-title">{reminder.title}</p>
                     <p className="reminder-meta">
-                      {reminder.location} - {formatReminderTime(reminder.startTime)}
+                      {formatRoomLocation(reminder.location)} -{" "}
+                      {formatReminderTime(reminder.startTime)}
                     </p>
                   </div>
                   <span className="pill status">Nadchodzące</span>

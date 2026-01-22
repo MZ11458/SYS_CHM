@@ -27,11 +27,15 @@ ON CONFLICT (email) DO NOTHING;
 CREATE TABLE IF NOT EXISTS rooms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
+  branch TEXT NOT NULL,
   location TEXT NOT NULL,
   capacity INT NOT NULL,
   resources JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE rooms
+  ADD COLUMN IF NOT EXISTS branch TEXT NOT NULL DEFAULT 'Warszawa';
 
 CREATE TABLE IF NOT EXISTS reservations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -47,10 +51,18 @@ CREATE TABLE IF NOT EXISTS reservations (
 CREATE INDEX IF NOT EXISTS reservations_room_time_idx
   ON reservations (room_id, start_time);
 
-INSERT INTO rooms (name, location, capacity, resources)
+INSERT INTO rooms (name, branch, location, capacity, resources)
 VALUES
-  ('Atlas', 'Floor 1', 8, '["TV","Whiteboard"]'::jsonb),
-  ('Orion', 'Floor 2', 12, '["Hybrid Kit","Whiteboard"]'::jsonb),
-  ('Nova', 'Floor 2', 6, '["Focus Booth"]'::jsonb),
-  ('Pulse', 'Floor 3', 16, '["Stage","Projector"]'::jsonb)
+  ('Atlas', 'Polska', 'Warszawa', 8, '["Telewizor","Tablica suchościeralna"]'::jsonb),
+  ('Orion', 'Polska', 'Warszawa', 12, '["Zestaw hybrydowy","Tablica suchościeralna"]'::jsonb),
+  ('Nova', 'Polska', 'Warszawa', 6, '["Kabina skupienia"]'::jsonb),
+  ('Pulse', 'Polska', 'Warszawa', 16, '["Scena","Projektor"]'::jsonb),
+  ('Hudson', 'USA', 'Nowy Jork', 6, '["Telewizor","Tablica suchościeralna"]'::jsonb),
+  ('Soho', 'USA', 'Nowy Jork', 4, '["Kabina skupienia"]'::jsonb),
+  ('Liberty', 'USA', 'Nowy Jork', 10, '["Zestaw hybrydowy","Telewizor"]'::jsonb),
+  ('Brooklyn', 'USA', 'Nowy Jork', 8, '["Projektor","Tablica suchościeralna"]'::jsonb),
+  ('Shibuya', 'Japonia', 'Tokio', 6, '["Telewizor","Tablica suchościeralna"]'::jsonb),
+  ('Ginza', 'Japonia', 'Tokio', 8, '["Zestaw hybrydowy","Projektor"]'::jsonb),
+  ('Akihabara', 'Japonia', 'Tokio', 4, '["Kabina skupienia"]'::jsonb),
+  ('Asakusa', 'Japonia', 'Tokio', 12, '["Telewizor","Projektor"]'::jsonb)
 ON CONFLICT (name) DO NOTHING;

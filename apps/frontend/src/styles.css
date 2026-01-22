@@ -692,6 +692,240 @@ label select {
   gap: 1.5rem;
 }
 
+.branch-overview {
+  overflow: hidden;
+}
+
+.branch-overview-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.availability-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.availability-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.availability-pill.high {
+  background: rgba(47, 158, 68, 0.12);
+  color: var(--success);
+  border-color: rgba(47, 158, 68, 0.3);
+}
+
+.availability-pill.medium {
+  background: rgba(230, 161, 51, 0.18);
+  color: var(--accent-strong);
+  border-color: rgba(230, 161, 51, 0.35);
+}
+
+.availability-pill.low {
+  background: rgba(209, 75, 60, 0.12);
+  color: var(--danger);
+  border-color: rgba(209, 75, 60, 0.3);
+}
+
+.branch-map {
+  position: relative;
+  min-height: 420px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 25% 30%, rgba(230, 161, 51, 0.12), transparent 45%),
+    radial-gradient(circle at 70% 65%, rgba(59, 130, 246, 0.12), transparent 50%),
+    linear-gradient(135deg, #f6f8fb 0%, #eef2f7 100%);
+  overflow: hidden;
+}
+
+.branch-map::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(15, 20, 27, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 20, 27, 0.05) 1px, transparent 1px);
+  background-size: 140px 140px;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.branch-map-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.7), transparent 60%),
+    radial-gradient(circle at 90% 10%, rgba(230, 161, 51, 0.18), transparent 55%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.branch-map-svg {
+  position: absolute;
+  width: calc(100% * var(--map-scale, 1.2));
+  height: calc(100% * var(--map-scale, 1.2));
+  left: calc(100% * var(--map-offset-x, -0.1));
+  top: calc(100% * var(--map-offset-y, -0.06));
+  pointer-events: none;
+  z-index: 1;
+  object-fit: contain;
+}
+
+.branch-map-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.map-arrow {
+  stroke: currentColor;
+  color: rgba(15, 20, 27, 0.35);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.map-arrow.high {
+  color: rgba(47, 158, 68, 0.55);
+}
+
+.map-arrow.medium {
+  color: rgba(199, 120, 18, 0.55);
+}
+
+.map-arrow.low {
+  color: rgba(209, 75, 60, 0.55);
+}
+
+.map-marker {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  box-shadow: 0 12px 24px rgba(15, 20, 27, 0.12);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  z-index: 5;
+}
+
+.map-marker:hover {
+  transform: translate(-50%, -55%);
+  border-color: rgba(230, 161, 51, 0.5);
+  background: #fff;
+  box-shadow: 0 16px 28px rgba(15, 20, 27, 0.14);
+}
+
+.map-marker.active {
+  border-color: var(--accent);
+  box-shadow: 0 16px 30px rgba(199, 120, 18, 0.2);
+}
+
+.marker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-muted);
+  box-shadow: 0 0 12px rgba(91, 102, 114, 0.4);
+}
+
+.map-marker.high .marker-dot {
+  background: var(--success);
+  box-shadow: 0 0 12px rgba(47, 158, 68, 0.6);
+}
+
+.map-marker.medium .marker-dot {
+  background: var(--accent-strong);
+  box-shadow: 0 0 12px rgba(199, 120, 18, 0.55);
+}
+
+.map-marker.low .marker-dot {
+  background: var(--danger);
+  box-shadow: 0 0 12px rgba(209, 75, 60, 0.5);
+}
+
+.marker-label {
+  font-weight: 600;
+}
+
+.marker-meta {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.branch-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.branch-card {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 12px 24px rgba(15, 20, 27, 0.08);
+}
+
+.branch-card.selected {
+  border-color: rgba(230, 161, 51, 0.5);
+  background: var(--accent-soft);
+}
+
+.branch-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.branch-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
 .branch-modal {
   position: fixed;
   inset: 0;
@@ -1298,6 +1532,14 @@ label select {
 
   .notifications-panel {
     position: static;
+  }
+
+  .branch-overview-body {
+    grid-template-columns: 1fr;
+  }
+
+  .branch-map {
+    min-height: 360px;
   }
 }
 

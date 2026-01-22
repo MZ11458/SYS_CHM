@@ -40,6 +40,35 @@ const formatDecimal = (value: number) =>
   });
 const formatPercent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 const safeRatio = (value: number, total: number) => (total > 0 ? value / total : 0);
+const formatShortDate = (value: string) =>
+  new Date(`${value}T00:00:00`).toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "short"
+  });
+const formatDayLabel = (value: string) =>
+  new Date(`${value}T00:00:00`).toLocaleDateString("pl-PL", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short"
+  });
+
+const buildTrendSeries = (values: number[]) => {
+  const max = Math.max(1, ...values);
+  const step = values.length > 1 ? 100 / (values.length - 1) : 0;
+  const points = values.map((value, index) => {
+    const x = step * index;
+    const y = 100 - (value / max) * 100;
+    return { x, y };
+  });
+  const line = points.length
+    ? `M ${points.map((point) => `${point.x},${point.y}`).join(" L ")}`
+    : "";
+  const area = points.length
+    ? `${line} L ${points[points.length - 1].x},100 L ${points[0].x},100 Z`
+    : "";
+
+  return { line, area, max };
+};
 
 export default function AdminPanel({
   token,
@@ -217,6 +246,8 @@ export default function AdminPanel({
         const reservationsPerRoom = safeRatio(totalReservations, totalRooms);
         const activePerRoom = safeRatio(activeReservations, totalRooms);
         const usersPerRoom = safeRatio(totalUsers, totalRooms);
+        const heatmap = stats.utilization?.heatmap ?? [];
+        const trend = stats.utilization?.trend ?? [];
         const global = stats.globalReservations
           ? {
               total: stats.globalReservations.total,
@@ -249,6 +280,8 @@ export default function AdminPanel({
           reservationsPerRoom,
           activePerRoom,
           usersPerRoom,
+          heatmap,
+          trend,
           global
         };
       })()
@@ -258,6 +291,33 @@ export default function AdminPanel({
   const scaleFill = derivedStats
     ? Math.round(derivedStats.activeRatio * scaleSteps)
     : 0;
+
+  const heatmapEntries = derivedStats?.heatmap ?? [];
+  const heatmapHours = Array.from({ length: 24 }, (_, hour) => hour);
+  const heatmapMap = new Map<string, number[]>();
+  for (const entry of heatmapEntries) {
+    if (!heatmapMap.has(entry.date)) {
+      heatmapMap.set(entry.date, Array.from({ length: 24 }, () => 0));
+    }
+    heatmapMap.get(entry.date)![entry.hour] = entry.count;
+  }
+  const heatmapRows = Array.from(heatmapMap.entries())
+    .sort((left, right) => left[0].localeCompare(right[0]))
+    .map(([date, values]) => ({ date, values }));
+  const heatmapMax = heatmapEntries.reduce(
+    (max, entry) => Math.max(max, entry.count),
+    0
+  );
+
+  const trendEntries = derivedStats?.trend ?? [];
+  const trendCounts = trendEntries.map((entry) => entry.count);
+  const trendSeries = buildTrendSeries(trendCounts);
+  const trend7 = trendEntries.slice(-7);
+  const trend7Counts = trend7.map((entry) => entry.count);
+  const trend7Max = Math.max(1, ...trend7Counts);
+  const trend7Total = trend7Counts.reduce((sum, value) => sum + value, 0);
+  const trend30Total = trendCounts.reduce((sum, value) => sum + value, 0);
+  const trend7Avg = trend7Counts.length ? trend7Total / trend7Counts.length : 0;
 
   return (
     <section className="panel admin-panel" data-animate>
@@ -279,7 +339,8 @@ export default function AdminPanel({
       {statsError ? <p className="error">{statsError}</p> : null}
 
       {derivedStats ? (
-        <div className="stats-center">
+        <>
+          <div className="stats-center">
           <div className="stats-hero">
             <div className="stats-hero-content">
               <div className="stats-hero-copy">
@@ -453,6 +514,128 @@ export default function AdminPanel({
             </div>
           </div>
         </div>
+
+        <div className="stats-insights">
+          <div className="stats-card stats-heatmap-card">
+            <div className="stats-card-head">
+              <div>
+                <h4>Heatmapa godzinowa</h4>
+                <span className="muted small">
+                  Ostatnie 7 dni · aktywne rezerwacje
+                </span>
+              </div>
+              <div className="heatmap-legend">
+                <span className="legend-label">0</span>
+                <span className="legend-swatch low" />
+                <span className="legend-swatch mid" />
+                <span className="legend-swatch high" />
+                <span className="legend-label">
+                  {heatmapMax > 0 ? formatNumber(heatmapMax) : "0"}
+                </span>
+              </div>
+            </div>
+            {heatmapRows.length ? (
+              <div className="heatmap-wrapper">
+                <div className="heatmap-grid">
+                  <span className="heatmap-corner" />
+                  {heatmapHours.map((hour) => (
+                    <span key={hour} className="heatmap-hour">
+                      {hour % 3 === 0 ? hour.toString().padStart(2, "0") : ""}
+                    </span>
+                  ))}
+                  {heatmapRows.map((row) => (
+                    <div key={row.date} className="heatmap-row">
+                      <span className="heatmap-day">
+                        {formatDayLabel(row.date)}
+                      </span>
+                      {row.values.map((value, hour) => {
+                        const ratio =
+                          heatmapMax > 0 ? value / heatmapMax : 0;
+                        return (
+                          <span
+                            key={`${row.date}-${hour}`}
+                            className="heatmap-cell"
+                            style={{ "--heat": ratio } as CSSProperties}
+                            title={`${formatDayLabel(row.date)} · ${hour
+                              .toString()
+                              .padStart(2, "0")}:00 – ${hour
+                              .toString()
+                              .padStart(2, "0")}:59 · ${value} rezerw.`}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="muted">Brak danych z ostatnich 7 dni.</p>
+            )}
+          </div>
+
+          <div className="stats-card stats-trend-card">
+            <div className="stats-card-head">
+              <div>
+                <h4>Trend 7/30 dni</h4>
+                <span className="muted small">
+                  Rezerwacje aktywne · ostatnie 30 dni
+                </span>
+              </div>
+              <div className="trend-summary">
+                <div>
+                  <span className="section-label">7 dni</span>
+                  <strong>{formatNumber(trend7Total)}</strong>
+                  <span className="muted small">
+                    {formatDecimal(trend7Avg)} / dzień
+                  </span>
+                </div>
+                <div>
+                  <span className="section-label">30 dni</span>
+                  <strong>{formatNumber(trend30Total)}</strong>
+                  <span className="muted small">
+                    {formatDecimal(trend30Total / 30)} / dzień
+                  </span>
+                </div>
+              </div>
+            </div>
+            {trendEntries.length ? (
+              <div className="trend-visual">
+                <div className="trend-chart">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path className="trend-area" d={trendSeries.area} />
+                    <path className="trend-line" d={trendSeries.line} />
+                  </svg>
+                  <div className="trend-axis">
+                    <span>{formatShortDate(trendEntries[0].date)}</span>
+                    <span>
+                      {formatShortDate(trendEntries[trendEntries.length - 1].date)}
+                    </span>
+                  </div>
+                </div>
+                <div className="trend-bars">
+                  {trend7.map((entry) => (
+                    <div key={entry.date} className="trend-bar">
+                      <span
+                        style={
+                          {
+                            "--value":
+                              trend7Max > 0 ? entry.count / trend7Max : 0
+                          } as CSSProperties
+                        }
+                        title={`${formatShortDate(entry.date)} · ${formatNumber(
+                          entry.count
+                        )} rezerw.`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="muted">Brak danych z ostatnich 30 dni.</p>
+            )}
+          </div>
+        </div>
+        </>
       ) : null}
 
       <div className="admin-users">

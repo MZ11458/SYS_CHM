@@ -24,15 +24,81 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
 
 router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
   try {
-    const [usersResult, roomsResult, reservationsResult, todayResult] =
-      await Promise.all([
-        pgQuery<{ count: string }>("SELECT COUNT(*) FROM users"),
-        pgQuery<{ count: string }>("SELECT COUNT(*) FROM rooms"),
-        pgQuery<{ count: string }>("SELECT COUNT(*) FROM reservations"),
-        pgQuery<{ count: string }>(
-          "SELECT COUNT(*) FROM reservations WHERE start_time::date = CURRENT_DATE"
+    const [
+      usersResult,
+      roomsResult,
+      reservationsResult,
+      todayResult,
+      heatmapResult,
+      trendResult
+    ] = await Promise.all([
+      pgQuery<{ count: string }>("SELECT COUNT(*) FROM users"),
+      pgQuery<{ count: string }>("SELECT COUNT(*) FROM rooms"),
+      pgQuery<{ count: string }>("SELECT COUNT(*) FROM reservations"),
+      pgQuery<{ count: string }>(
+        "SELECT COUNT(*) FROM reservations WHERE start_time::date = CURRENT_DATE"
+      ),
+      pgQuery<{ day: string | Date; hour: number; count: string }>(`
+        WITH days AS (
+          SELECT generate_series(
+            CURRENT_DATE - INTERVAL '6 days',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+          )::date AS day
+        ),
+        hours AS (
+          SELECT generate_series(0, 23) AS hour
+        ),
+        grid AS (
+          SELECT day, hour FROM days CROSS JOIN hours
+        ),
+        expanded AS (
+          SELECT date_trunc('hour', slot) AS hour_slot
+          FROM reservations r
+          JOIN LATERAL generate_series(
+            date_trunc('hour', r.start_time),
+            date_trunc('hour', r.end_time - INTERVAL '1 second'),
+            INTERVAL '1 hour'
+          ) AS slot ON true
+          WHERE r.status = 'active'
+            AND r.start_time < CURRENT_DATE + INTERVAL '1 day'
+            AND r.end_time >= CURRENT_DATE - INTERVAL '6 days'
+        ),
+        counts AS (
+          SELECT hour_slot::date AS day,
+                 EXTRACT(HOUR FROM hour_slot)::int AS hour,
+                 COUNT(*)::int AS count
+          FROM expanded
+          GROUP BY day, hour
         )
-      ]);
+        SELECT grid.day, grid.hour, COALESCE(counts.count, 0) AS count
+        FROM grid
+        LEFT JOIN counts ON grid.day = counts.day AND grid.hour = counts.hour
+        ORDER BY grid.day, grid.hour
+      `),
+      pgQuery<{ day: string | Date; count: string }>(`
+        WITH days AS (
+          SELECT generate_series(
+            CURRENT_DATE - INTERVAL '29 days',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+          )::date AS day
+        ),
+        counts AS (
+          SELECT start_time::date AS day,
+                 COUNT(*)::int AS count
+          FROM reservations
+          WHERE status = 'active'
+            AND start_time >= CURRENT_DATE - INTERVAL '29 days'
+            AND start_time < CURRENT_DATE + INTERVAL '1 day'
+          GROUP BY start_time::date
+        )
+        SELECT days.day, COALESCE(counts.count, 0) AS count
+        FROM days
+        LEFT JOIN counts ON days.day = counts.day
+        ORDER BY days.day
+      `)
+    ]);
 
     const statusResult = await pgQuery<{ status: string; count: string }>(
       "SELECT status, COUNT(*) FROM reservations GROUP BY status"
@@ -49,6 +115,20 @@ router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
       }
     }
 
+    const formatDate = (value: string | Date) =>
+      typeof value === "string" ? value : value.toISOString().slice(0, 10);
+
+    const heatmap = heatmapResult.rows.map((row) => ({
+      date: formatDate(row.day),
+      hour: Number(row.hour),
+      count: Number(row.count)
+    }));
+
+    const trend = trendResult.rows.map((row) => ({
+      date: formatDate(row.day),
+      count: Number(row.count)
+    }));
+
     const globalStats = await withTimeout(
       fetchGlobalStats().catch(() => null),
       1500
@@ -63,7 +143,11 @@ router.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
         canceled,
         today: Number(todayResult.rows[0].count)
       },
-      globalReservations: globalStats
+      globalReservations: globalStats,
+      utilization: {
+        heatmap,
+        trend
+      }
     });
   } catch (error) {
     return res.status(500).json({ error: "admin_stats_failed" });

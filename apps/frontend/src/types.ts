@@ -66,4 +66,15 @@ export interface AdminStats {
     active: number;
     canceled: number;
   } | null;
+  utilization: {
+    heatmap: Array<{
+      date: string;
+      hour: number;
+      count: number;
+    }>;
+    trend: Array<{
+      date: string;
+      count: number;
+    }>;
+  };
 }

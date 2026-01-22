@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   fetchAdminStats,
   fetchAdminUsers,
@@ -31,6 +31,15 @@ const errorMessages: Record<string, string> = {
 
 const resolveError = (err: any, fallback: string) =>
   errorMessages[err?.message] || fallback;
+
+const formatNumber = (value: number) => value.toLocaleString("pl-PL");
+const formatDecimal = (value: number) =>
+  value.toLocaleString("pl-PL", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value > 0 && value < 1 ? 1 : 0
+  });
+const formatPercent = (ratio: number) => `${Math.round(ratio * 100)}%`;
+const safeRatio = (value: number, total: number) => (total > 0 ? value / total : 0);
 
 export default function AdminPanel({
   token,
@@ -185,13 +194,81 @@ export default function AdminPanel({
     }
   };
 
+  const derivedStats = stats
+    ? (() => {
+        const totalReservations = stats.reservations.total;
+        const activeReservations = stats.reservations.active;
+        const canceledReservations = stats.reservations.canceled;
+        const todayReservations = stats.reservations.today;
+        const totalRooms = stats.rooms.total;
+        const totalUsers = stats.users.total;
+        const activeRatio = Math.min(
+          1,
+          safeRatio(activeReservations, totalReservations)
+        );
+        const canceledRatio = Math.min(
+          1,
+          safeRatio(canceledReservations, totalReservations)
+        );
+        const todayRatio = Math.min(
+          1,
+          safeRatio(todayReservations, totalReservations)
+        );
+        const reservationsPerRoom = safeRatio(totalReservations, totalRooms);
+        const activePerRoom = safeRatio(activeReservations, totalRooms);
+        const usersPerRoom = safeRatio(totalUsers, totalRooms);
+        const global = stats.globalReservations
+          ? {
+              total: stats.globalReservations.total,
+              active: stats.globalReservations.active,
+              canceled: stats.globalReservations.canceled,
+              activeRatio: Math.min(
+                1,
+                safeRatio(
+                  stats.globalReservations.active,
+                  stats.globalReservations.total
+                )
+              ),
+              coverageRatio: Math.min(
+                1,
+                safeRatio(stats.globalReservations.total, totalReservations)
+              )
+            }
+          : null;
+
+        return {
+          totalReservations,
+          activeReservations,
+          canceledReservations,
+          todayReservations,
+          totalRooms,
+          totalUsers,
+          activeRatio,
+          canceledRatio,
+          todayRatio,
+          reservationsPerRoom,
+          activePerRoom,
+          usersPerRoom,
+          global
+        };
+      })()
+    : null;
+
+  const scaleSteps = 12;
+  const scaleFill = derivedStats
+    ? Math.round(derivedStats.activeRatio * scaleSteps)
+    : 0;
+
   return (
-    <section className="panel" data-animate>
+    <section className="panel admin-panel" data-animate>
       <div className="section-head">
         <div>
-          <p className="eyebrow">Nadzór operacyjny</p>
-          <h2>Podsumowanie użycia</h2>
-          <p className="muted">Szybki wgląd w rezerwacje i aktywność zespołu.</p>
+          <p className="eyebrow">Panel admina</p>
+          <h2>Centrum statystyk</h2>
+          <p className="muted">
+            Wskaźniki wykorzystania sal, obciążenia i synchronizacji w jednym
+            miejscu.
+          </p>
         </div>
         <button className="ghost-button" onClick={loadStats}>
           Odśwież
@@ -201,40 +278,179 @@ export default function AdminPanel({
       {statsLoading ? <p className="muted">Ładowanie...</p> : null}
       {statsError ? <p className="error">{statsError}</p> : null}
 
-      {stats ? (
-        <div className="stats-grid">
-          <div className="stat-card">
-            <p className="muted">Użytkownicy</p>
-            <h3 className="stat-value">{stats.users.total}</h3>
-          </div>
-          <div className="stat-card">
-            <p className="muted">Sale</p>
-            <h3 className="stat-value">{stats.rooms.total}</h3>
-          </div>
-          <div className="stat-card">
-            <p className="muted">Rezerwacje</p>
-            <h3 className="stat-value">{stats.reservations.total}</h3>
-            <p className="muted small">
-              Aktywne: {stats.reservations.active} | Anulowane: {" "}
-              {stats.reservations.canceled}
-            </p>
-            <p className="muted small">Dziś: {stats.reservations.today}</p>
-          </div>
-          <div className="stat-card">
-            <p className="muted">Rezerwacje globalne</p>
-            {stats.globalReservations ? (
-              <>
-                <h3 className="stat-value">
-                  {stats.globalReservations.total}
-                </h3>
-                <p className="muted small">
-                  Aktywne: {stats.globalReservations.active} | Anulowane: {" "}
-                  {stats.globalReservations.canceled}
+      {derivedStats ? (
+        <div className="stats-center">
+          <div className="stats-hero">
+            <div className="stats-hero-content">
+              <div className="stats-hero-copy">
+                <p className="eyebrow">Centrum statystyk</p>
+                <h3>Wykorzystanie sal i obciążenie</h3>
+                <p className="muted">
+                  Szybki podgląd trendów, efektywności i dynamiki rezerwacji.
                 </p>
-              </>
-            ) : (
-              <p className="muted">Emulator Spanner jest niedostępny.</p>
-            )}
+                <div className="stats-hero-kpis">
+                  <div className="hero-kpi">
+                    <span>Rezerwacje łącznie</span>
+                    <strong>{formatNumber(derivedStats.totalReservations)}</strong>
+                    <span className="muted small">
+                      Dziś: {formatNumber(derivedStats.todayReservations)}
+                    </span>
+                  </div>
+                  <div className="hero-kpi">
+                    <span>Sale</span>
+                    <strong>{formatNumber(derivedStats.totalRooms)}</strong>
+                    <span className="muted small">
+                      {formatDecimal(derivedStats.reservationsPerRoom)} rezerw./sala
+                    </span>
+                  </div>
+                  <div className="hero-kpi">
+                    <span>Użytkownicy</span>
+                    <strong>{formatNumber(derivedStats.totalUsers)}</strong>
+                    <span className="muted small">
+                      {formatDecimal(derivedStats.usersPerRoom)} osób/sala
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="stats-hero-visual">
+                <div
+                  className="stats-gauge"
+                  style={{ "--progress": derivedStats.activeRatio } as CSSProperties}
+                >
+                  <div className="stats-gauge-inner">
+                    <span>Aktywne</span>
+                    <strong>{formatPercent(derivedStats.activeRatio)}</strong>
+                  </div>
+                </div>
+                <div className="stats-hero-foot">
+                  <div className="stat-mini">
+                    <span>Anulowane</span>
+                    <strong>{formatPercent(derivedStats.canceledRatio)}</strong>
+                  </div>
+                  <div className="stat-mini">
+                    <span>Dziś</span>
+                    <strong>{formatPercent(derivedStats.todayRatio)}</strong>
+                  </div>
+                </div>
+                <div className="stats-scale">
+                  <p className="section-label">Skala obciążenia</p>
+                  <div className="stats-scale-grid">
+                    {Array.from({ length: scaleSteps }).map((_, index) => (
+                      <span
+                        key={index}
+                        className={`scale-dot ${
+                          index < scaleFill ? "active" : ""
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="stats-side">
+            <div className="stats-card">
+              <div className="stats-card-head">
+                <h4>Rozkład rezerwacji</h4>
+                <span className="muted small">
+                  Łącznie: {formatNumber(derivedStats.totalReservations)}
+                </span>
+              </div>
+              <div className="stats-bars">
+                <div className="stats-bar-row">
+                  <span>Aktywne</span>
+                  <div
+                    className="stats-bar success"
+                    style={{ "--value": derivedStats.activeRatio } as CSSProperties}
+                  />
+                  <span>{formatNumber(derivedStats.activeReservations)}</span>
+                </div>
+                <div className="stats-bar-row">
+                  <span>Anulowane</span>
+                  <div
+                    className="stats-bar danger"
+                    style={{ "--value": derivedStats.canceledRatio } as CSSProperties}
+                  />
+                  <span>{formatNumber(derivedStats.canceledReservations)}</span>
+                </div>
+                <div className="stats-bar-row">
+                  <span>Dzisiaj</span>
+                  <div
+                    className="stats-bar info"
+                    style={{ "--value": derivedStats.todayRatio } as CSSProperties}
+                  />
+                  <span>{formatNumber(derivedStats.todayReservations)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stats-card">
+              <div className="stats-card-head">
+                <h4>Synchronizacja globalna</h4>
+                <span className="muted small">Spójność i pokrycie</span>
+              </div>
+              {derivedStats.global ? (
+                <div className="stats-global">
+                  <div
+                    className="stats-gauge small"
+                    style={
+                      { "--progress": derivedStats.global.activeRatio } as CSSProperties
+                    }
+                  >
+                    <div className="stats-gauge-inner">
+                      <span>Aktywne</span>
+                      <strong>{formatPercent(derivedStats.global.activeRatio)}</strong>
+                    </div>
+                  </div>
+                  <div className="stats-global-details">
+                    <div>
+                      <p className="muted small">Rezerwacje globalne</p>
+                      <h3>{formatNumber(derivedStats.global.total)}</h3>
+                    </div>
+                    <div className="stats-global-bar">
+                      <span className="muted small">Pokrycie globalne</span>
+                      <div
+                        className="stats-bar accent"
+                        style={
+                          { "--value": derivedStats.global.coverageRatio } as CSSProperties
+                        }
+                      />
+                      <span className="muted small">
+                        {formatPercent(derivedStats.global.coverageRatio)}
+                      </span>
+                    </div>
+                    <div className="stats-global-meta">
+                      <span>Aktywne: {formatNumber(derivedStats.global.active)}</span>
+                      <span>Anulowane: {formatNumber(derivedStats.global.canceled)}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="muted">Emulator Spanner jest niedostępny.</p>
+              )}
+            </div>
+
+            <div className="stats-card compact">
+              <div className="stats-card-head">
+                <h4>Efektywność operacyjna</h4>
+                <span className="muted small">Skondensowane wskaźniki</span>
+              </div>
+              <div className="stats-metrics">
+                <div className="stats-metric">
+                  <span>Rezerwacje / sala</span>
+                  <strong>{formatDecimal(derivedStats.reservationsPerRoom)}</strong>
+                </div>
+                <div className="stats-metric">
+                  <span>Aktywne / sala</span>
+                  <strong>{formatDecimal(derivedStats.activePerRoom)}</strong>
+                </div>
+                <div className="stats-metric">
+                  <span>Użytkownicy / sala</span>
+                  <strong>{formatDecimal(derivedStats.usersPerRoom)}</strong>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}

@@ -20,7 +20,6 @@ const errorMessages: Record<string, string> = {
   auth_lookup_failed: "Nie udało się zweryfikować sesji.",
   missing_token: "Brak autoryzacji. Zaloguj się ponownie.",
   invalid_token: "Sesja wygasła. Zaloguj się ponownie.",
-  spanner_sync_failed: "Anulowanie zapisane lokalnie, bez synchronizacji globalnej.",
   request_failed: "Wystąpił błąd komunikacji."
 };
 
@@ -66,32 +65,21 @@ export default function ReservationsPanel({
       await loadReservations();
       onNotify?.({
         title: "Rezerwacja anulowana",
-        message: "Slot został anulowany i zsynchronizowany globalnie.",
+        message: "Slot został anulowany.",
         tone: "success",
-        status: { api: "ok", spanner: "ok" }
+        status: { api: "ok" }
       });
     } catch (err: any) {
       const message = resolveError(err, "Nie udało się anulować rezerwacji.");
       setError(message);
 
-      if (err?.message === "spanner_sync_failed") {
-        onStatusUpdate?.({ spanner: "warning" });
-        onNotify?.({
-          title: "Synchronizacja globalna",
-          message:
-            "Anulowanie zostało zapisane lokalnie, ale globalna synchronizacja nie powiodła się.",
-          tone: "warning",
-          status: { spanner: "warning" }
-        });
-      } else {
-        onStatusUpdate?.({ api: "warning" });
-        onNotify?.({
-          title: "Anulowanie nieudane",
-          message,
-          tone: "error",
-          status: { api: "warning" }
-        });
-      }
+      onStatusUpdate?.({ api: "warning" });
+      onNotify?.({
+        title: "Anulowanie nieudane",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setActionId(null);
     }

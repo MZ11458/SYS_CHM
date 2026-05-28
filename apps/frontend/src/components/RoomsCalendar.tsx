@@ -55,7 +55,6 @@ const actionErrorMessages: Record<string, string> = {
   invalid_time: "Nieprawidłowa godzina rezerwacji.",
   invalid_range: "Nieprawidłowy zakres rezerwacji.",
   missing_user: "Brak danych użytkownika.",
-  spanner_sync_failed: "Rezerwacja zapisana lokalnie, brak synchronizacji globalnej.",
   reservation_create_failed: "Nie udało się utworzyć rezerwacji.",
   request_failed: "Nie udało się utworzyć rezerwacji."
 };
@@ -554,11 +553,11 @@ export default function RoomsCalendar({
       const result = await fetchRooms(selectedDate, token);
       setRooms(result.rooms);
       setDraft(null);
-      onStatusUpdate?.({ api: "ok", spanner: "ok" });
+      onStatusUpdate?.({ api: "ok" });
       onRemindersRefresh?.();
       onNotify?.({
         title: "Rezerwacja utworzona",
-        message: "Slot został zapisany i zsynchronizowany globalnie.",
+        message: "Slot został zapisany.",
         tone: "success"
       });
     } catch (err: any) {
@@ -567,24 +566,13 @@ export default function RoomsCalendar({
         "Nie udało się utworzyć rezerwacji.";
       setActionError(message);
 
-      if (err?.message === "spanner_sync_failed") {
-        onStatusUpdate?.({ spanner: "warning" });
-        onNotify?.({
-          title: "Synchronizacja globalna",
-          message:
-            "Rezerwacja została zapisana lokalnie, ale globalna synchronizacja nie powiodła się.",
-          tone: "warning",
-          status: { spanner: "warning" }
-        });
-      } else {
-        onStatusUpdate?.({ api: "warning" });
-        onNotify?.({
-          title: "Rezerwacja nieudana",
-          message,
-          tone: "error",
-          status: { api: "warning" }
-        });
-      }
+      onStatusUpdate?.({ api: "warning" });
+      onNotify?.({
+        title: "Rezerwacja nieudana",
+        message,
+        tone: "error",
+        status: { api: "warning" }
+      });
     } finally {
       setActionLoading(false);
     }

@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cf:dev": "npm run build && wrangler dev",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply room-booking-db --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply room-booking-db --remote"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -16,6 +20,7 @@
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "^5.3.3",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "wrangler": "^4.95.0"
   }
 }

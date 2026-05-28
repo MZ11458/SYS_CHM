@@ -1,5 +1,0 @@
-steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build','-t','REPLACE_WITH_BACKEND_IMAGE','-f','apps/backend/Dockerfile','.']
-images:
-- 'REPLACE_WITH_BACKEND_IMAGE'

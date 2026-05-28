@@ -36,12 +36,6 @@ const systemStatusLabels: Record<StatusLevel, string> = {
   down: "Niedostępny"
 };
 
-const spannerStatusLabels: Record<StatusLevel, string> = {
-  ok: "Aktywna",
-  warning: "Ostrzeżenie",
-  down: "Niedostępna"
-};
-
 const createAlertId = () =>
   `alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -77,7 +71,6 @@ export default function App() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus>(() => ({
     api: navigator.onLine ? "ok" : "down",
-    spanner: "ok",
     updatedAt: Date.now()
   }));
 
@@ -137,16 +130,14 @@ export default function App() {
           return;
         }
         updateStatus({
-          api: result.api === "ok" ? "ok" : "down",
-          spanner: result.spanner === "ok" ? "ok" : "down"
+          api: result.api === "ok" ? "ok" : "down"
         });
       } catch {
         if (!active) {
           return;
         }
         updateStatus({
-          api: "down",
-          spanner: "down"
+          api: "down"
         });
       }
     };
@@ -251,7 +242,6 @@ export default function App() {
 
   if (!token || !user) {
     const systemLabel = systemStatusLabels[systemStatus.api];
-    const spannerLabel = spannerStatusLabels[systemStatus.spanner];
 
     return (
       <div className="auth-shell">
@@ -289,9 +279,9 @@ export default function App() {
               </span>
             </div>
             <div className="status-card">
-              <span className="status-label">Synchronizacja globalna</span>
-              <span className={`status-value ${systemStatus.spanner}`}>
-                {spannerLabel}
+              <span className="status-label">Dane aplikacji</span>
+              <span className={`status-value ${systemStatus.api}`}>
+                {systemLabel}
               </span>
             </div>
           </div>

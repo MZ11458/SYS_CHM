@@ -9,6 +9,9 @@
     "dev:frontend": "npm --workspace apps/frontend run dev",
     "dev:backend": "npm --workspace apps/backend run dev",
     "build:frontend": "npm --workspace apps/frontend run build",
-    "build:backend": "npm --workspace apps/backend run build"
+    "build:backend": "npm --workspace apps/backend run build",
+    "deploy:cloudflare": "npm --workspace apps/frontend run deploy:cloudflare",
+    "d1:migrate:local": "npm --workspace apps/frontend run d1:migrate:local",
+    "d1:migrate:remote": "npm --workspace apps/frontend run d1:migrate:remote"
   }
 }

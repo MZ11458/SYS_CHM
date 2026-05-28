@@ -248,24 +248,6 @@ export default function AdminPanel({
         const usersPerRoom = safeRatio(totalUsers, totalRooms);
         const heatmap = stats.utilization?.heatmap ?? [];
         const trend = stats.utilization?.trend ?? [];
-        const global = stats.globalReservations
-          ? {
-              total: stats.globalReservations.total,
-              active: stats.globalReservations.active,
-              canceled: stats.globalReservations.canceled,
-              activeRatio: Math.min(
-                1,
-                safeRatio(
-                  stats.globalReservations.active,
-                  stats.globalReservations.total
-                )
-              ),
-              coverageRatio: Math.min(
-                1,
-                safeRatio(stats.globalReservations.total, totalReservations)
-              )
-            }
-          : null;
 
         return {
           totalReservations,
@@ -281,8 +263,7 @@ export default function AdminPanel({
           activePerRoom,
           usersPerRoom,
           heatmap,
-          trend,
-          global
+          trend
         };
       })()
     : null;
@@ -444,52 +425,6 @@ export default function AdminPanel({
                   <span>{formatNumber(derivedStats.todayReservations)}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="stats-card">
-              <div className="stats-card-head">
-                <h4>Synchronizacja globalna</h4>
-                <span className="muted small">Spójność i pokrycie</span>
-              </div>
-              {derivedStats.global ? (
-                <div className="stats-global">
-                  <div
-                    className="stats-gauge small"
-                    style={
-                      { "--progress": derivedStats.global.activeRatio } as CSSProperties
-                    }
-                  >
-                    <div className="stats-gauge-inner">
-                      <span>Aktywne</span>
-                      <strong>{formatPercent(derivedStats.global.activeRatio)}</strong>
-                    </div>
-                  </div>
-                  <div className="stats-global-details">
-                    <div>
-                      <p className="muted small">Rezerwacje globalne</p>
-                      <h3>{formatNumber(derivedStats.global.total)}</h3>
-                    </div>
-                    <div className="stats-global-bar">
-                      <span className="muted small">Pokrycie globalne</span>
-                      <div
-                        className="stats-bar accent"
-                        style={
-                          { "--value": derivedStats.global.coverageRatio } as CSSProperties
-                        }
-                      />
-                      <span className="muted small">
-                        {formatPercent(derivedStats.global.coverageRatio)}
-                      </span>
-                    </div>
-                    <div className="stats-global-meta">
-                      <span>Aktywne: {formatNumber(derivedStats.global.active)}</span>
-                      <span>Anulowane: {formatNumber(derivedStats.global.canceled)}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="muted">Emulator Spanner jest niedostępny.</p>
-              )}
             </div>
 
             <div className="stats-card compact">

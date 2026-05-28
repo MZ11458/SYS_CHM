@@ -61,11 +61,6 @@ export interface AdminStats {
     canceled: number;
     today: number;
   };
-  globalReservations: {
-    total: number;
-    active: number;
-    canceled: number;
-  } | null;
   utilization: {
     heatmap: Array<{
       date: string;

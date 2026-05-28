@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
 import { Router } from "express";
-import { insertGlobalReservation, cancelGlobalReservation } from "../db/spanner";
 import { pgPool, pgQuery } from "../db/postgres";
 import { requireAuth } from "../middleware/auth";
 import type { AuthenticatedRequest } from "../middleware/auth";
@@ -105,22 +104,6 @@ router.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
     await client.query("COMMIT");
 
     const row = insertResult.rows[0];
-
-    try {
-      await insertGlobalReservation({
-        id: row.id,
-        roomId: row.room_id,
-        userId: row.user_id,
-        startTime: new Date(row.start_time),
-        endTime: new Date(row.end_time),
-        status: row.status,
-        createdAt: new Date(row.created_at)
-      });
-    } catch (error) {
-      await pgQuery("DELETE FROM reservations WHERE id = $1", [row.id]);
-      return res.status(502).json({ error: "spanner_sync_failed" });
-    }
-
     return res.status(201).json({
       reservation: {
         id: row.id,
@@ -185,20 +168,6 @@ router.post("/:id/cancel", requireAuth, async (req: AuthenticatedRequest, res) =
 
     const updated = updateResult.rows[0];
     const canceledAt = new Date(updated.canceled_at);
-
-    try {
-      await cancelGlobalReservation({
-        id: updated.id,
-        status: updated.status,
-        canceledAt
-      });
-    } catch (error) {
-      await pgQuery(
-        "UPDATE reservations SET status = 'active', canceled_at = NULL WHERE id = $1",
-        [reservationId]
-      );
-      return res.status(502).json({ error: "spanner_sync_failed" });
-    }
 
     return res.json({
       reservation: {

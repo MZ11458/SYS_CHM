@@ -1,6 +1,6 @@
 export type AlertTone = "info" | "success" | "warning" | "error";
 export type StatusLevel = "ok" | "warning" | "down";
-export type StatusKind = "api" | "spanner";
+export type StatusKind = "api";
 
 export interface Alert {
   id: string;
@@ -19,7 +19,6 @@ export interface Reminder {
 
 export interface SystemStatus {
   api: StatusLevel;
-  spanner: StatusLevel;
   updatedAt: number;
 }
 

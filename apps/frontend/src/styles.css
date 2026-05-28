@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
-  --font-sans: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --font-sans: "Segoe UI", Inter, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --bg: #f2f4f5;
   --surface: #ffffff;
   --surface-muted: #f7f9fb;

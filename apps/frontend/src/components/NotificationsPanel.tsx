@@ -65,7 +65,7 @@ export default function NotificationsPanel({
         <div className="notifications-title">
           <p className="eyebrow">Powiadomienia</p>
           <h2>Centrum stanu</h2>
-          <p className="muted">Monitoruj synchronizację i najbliższe zdarzenia.</p>
+          <p className="muted">Monitoruj API i najbliższe zdarzenia.</p>
         </div>
         <div className="notifications-actions">
           <button className="ghost-button" onClick={onRefresh}>
@@ -101,19 +101,13 @@ export default function NotificationsPanel({
       <div id="notifications-body" className="notifications-body" hidden={!isOpen}>
         <div className="notifications-section">
           <div className="section-title">
-            <p className="section-label">Status synchronizacji</p>
+            <p className="section-label">Status systemu</p>
           </div>
           <div className="status-list">
             <div className="status-item">
               <span>API i dane lokalne</span>
               <span className={`status-pill ${systemStatus.api}`}>
                 {statusLabels[systemStatus.api]}
-              </span>
-            </div>
-            <div className="status-item">
-              <span>Synchronizacja globalna</span>
-              <span className={`status-pill ${systemStatus.spanner}`}>
-                {statusLabels[systemStatus.spanner]}
               </span>
             </div>
           </div>

@@ -1,6 +1,8 @@
 import type { AdminStats, AdminUser, Room, User } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_URL = import.meta.env.DEV
+  ? import.meta.env.VITE_API_URL || "http://localhost:4000"
+  : "";
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -200,5 +202,5 @@ export async function fetchHealth() {
     cache: "no-store"
   });
 
-  return handleResponse<{ api: "ok"; spanner: "ok" | "down" }>(response);
+  return handleResponse<{ api: "ok" | "down" }>(response);
 }

@@ -1,36 +1,19 @@
 # Room and Resource Booking
 
-Monorepo with a React + TypeScript frontend and a Node.js + TypeScript backend.
+React + TypeScript app deployed as a Cloudflare Worker with Static Assets and D1.
 
 ## Structure
-- apps/frontend - React UI
-- apps/backend - Express API
+- apps/frontend - React UI, Worker API, D1 migrations, Cloudflare config
 
-## Quick start
+## Local Cloudflare runtime
 1) Install dependencies
    - npm install
-2) Run apps in separate terminals
-   - npm run dev:frontend
-   - npm run dev:backend
-3) Optional backend env
-   - copy apps/backend/.env.example to apps/backend/.env
-4) Optional frontend env
-   - copy apps/frontend/.env.example to apps/frontend/.env
-
-## Local Postgres
-1) Start Postgres
-   - docker compose up -d postgres
-2) Connection details
-   - host: localhost
-   - port: 5432
-   - db: room_booking
-   - user: room_user
-   - password: room_pass
-3) Seeded admin account
-   - email: admin@local.test
-   - password: admin123
-4) If schema changes, reset data
-   - docker compose down -v
+2) Create `apps/frontend/.dev.vars`
+   - JWT_SECRET="local-test-secret"
+3) Apply the local D1 migration
+   - npm run d1:migrate:local
+4) Start the Worker locally
+   - npm run dev
 
 ## Cloudflare Free deployment
 The Cloudflare build runs without an external backend. A Worker serves the Vite app, handles `/api/*`, and stores data in Cloudflare D1.
@@ -67,5 +50,3 @@ Local Cloudflare runtime:
 Seeded admin account:
 - email: admin@local.test
 - password: admin123
-
-For standard Vite development, `VITE_API_URL` defaults to `http://localhost:4000`. For the Cloudflare runtime, leave `VITE_API_URL` unset so the frontend calls the same origin and the Worker handles `/api/*`.

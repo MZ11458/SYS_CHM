@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "room-booking-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "7c7a6a49-6491-4cab-93d3-5e1eb5837fe2",
       "migrations_dir": "migrations"
     }
   ],

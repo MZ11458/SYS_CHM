@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchHealth, fetchReservations } from "./api";
+import { fetchReservations } from "./api";
 import LoginForm from "./components/LoginForm";
 import RoomsCalendar from "./components/RoomsCalendar";
 import ReservationsPanel from "./components/ReservationsPanel";
@@ -21,7 +21,6 @@ const STORAGE_KEY = "room-booking-auth";
 const MAX_ALERTS = 6;
 const MAX_TOASTS = 3;
 const TOAST_DURATION_MS = 6500;
-const HEALTH_POLL_MS = 15000;
 
 type StoredAuth = {
   token: string;
@@ -119,37 +118,6 @@ export default function App() {
       updatedAt: Date.now()
     }));
   };
-
-  useEffect(() => {
-    let active = true;
-
-    const pollHealth = async () => {
-      try {
-        const result = await fetchHealth();
-        if (!active) {
-          return;
-        }
-        updateStatus({
-          api: result.api === "ok" ? "ok" : "down"
-        });
-      } catch {
-        if (!active) {
-          return;
-        }
-        updateStatus({
-          api: "down"
-        });
-      }
-    };
-
-    pollHealth();
-    const timer = window.setInterval(pollHealth, HEALTH_POLL_MS);
-
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, []);
 
   const handleOpenNotifications = () => {
     setNotificationsOpen(true);

@@ -79,7 +79,7 @@ class ApiError extends Error {
 }
 
 function shouldHandleApi(pathname: string) {
-  return pathname.startsWith("/api/") || pathname === "/health";
+  return pathname.startsWith("/api/");
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -840,9 +840,6 @@ async function handleApi(request: Request, env: Env) {
     /^\/api\/admin\/users\/([^/]+)\/reset-password$/.exec(path);
   const adminUserMatch = /^\/api\/admin\/users\/([^/]+)$/.exec(path);
 
-  if (path === "/health" && request.method === "GET") {
-    return jsonResponse({ status: "ok" });
-  }
   if (path === "/api/health" && request.method === "GET") {
     return jsonResponse({ api: "ok" });
   }
